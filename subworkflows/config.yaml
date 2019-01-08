@@ -1,0 +1,64 @@
+main:
+    subworkflows:
+        - "GATK"
+
+path:
+    container: "docker://broadinstitute/gatk"
+    scripts: "/home/tcomi/projects/gtex-gatk4/scripts"
+    temp_dir: "/scatch/"
+    
+    # directory to hold all data
+    data_root: "/tigress/tcomi/gatk4devel"
+
+    fastq_input: "__DATA_ROOT__/original_fastq"
+    fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
+    fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+
+    ubam: "__DATA_ROOT__/ubams/{id}.ubam"
+    marked_bam: "__DATA_ROOT__/marked_bam/{id}.marked.bam"
+    marked_metric: "__DATA_ROOT__/marked_bam/{id}.marked.metrics.txt"
+    mapped_bam: "__DATA_ROOT__/mapped_bam/{id}.mapped.bam"
+
+    dedup_bam: "__DATA_ROOT__/dedup_bam/{id}.dedup.bam"
+    dedup_metric: "__DATA_ROOT__/dedup_bam/{id}.dupmetrics.txt"
+
+    #References
+    ref_genome: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/hs37d5.fa"
+
+gatk:
+    verbosity: "ERROR"
+    FastqToSam:
+        memory: "4G"
+        options: "-PL=ILLUMINA"
+
+    MergeSamFiles:
+        memory: "4G"
+        options: "-SO queryname"
+
+    MarkIlluminaAdapters:
+        memory: "4G"
+
+    SamToFastq:
+        memory: "4G"
+        options: >
+            --CLIPPING_ATTRIBUTE=XT
+            --CLIPPING_ACTION=2
+            --INTERLEAVE=true
+            --NON_PF=true
+
+    Bwa_Mem:
+        options: "-M -t 2"
+
+    MergeBamAlignment:
+        memory: "4G"
+        options: >
+            --CREATE_INDEX=true
+            --ADD_MATE_CIGAR=true
+            --INCLUDE_SECONDARY_ALIGNMENTS=true
+            --MAX_INSERTIONS_OR_DELETIONS=-1
+            --PRIMARY_ALIGNMENT_STRATEGY=MostDistant
+            --ATTRIBUTES_TO_RETAIN=XS
+
+    MarkDuplicates:
+        memory: "4G"
+

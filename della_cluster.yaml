@@ -1,0 +1,28 @@
+__default__:
+    "n": 1
+    "memory": '1G'
+    "time": '0-2'
+    "jobname": 'snake'
+
+fastq_to_ubam:
+    "n": 2
+    "jobname": 'fastq_to_ubam'
+    "memory": '5G'
+
+mark_adapters:
+    "n": 1
+    "jobname": 'mark_adapters'
+    "memory": '5G'
+    "time": '0-2'
+
+map_bam:
+    "n": 2
+    "jobname": 'map_bam'
+    "memory": '9G'
+    "time": '0-2'
+
+dedup_bam:
+    "n": 1
+    "jobname": 'dedup_bam'
+    "memory": '5G'
+    "time": '0-2'
