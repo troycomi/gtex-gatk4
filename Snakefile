@@ -16,7 +16,7 @@ configfile: 'subworkflows/config.yaml'
 paths = config['path']
 paths = clean_config_paths(paths)
 
-ids = glob_wildcards(paths['fastq_R1']).id
+ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
 logging.info("Found {} fastq files to process...".format(len(ids)))
 
 subworkflows = config['main']['subworkflows']
@@ -63,4 +63,3 @@ rule all:
 rule clean:
     shell:
         'rm slurm_out/* || echo no slurm output\n'
-        'rm {paths[data_root]}/ubams/* || echo no ubams'

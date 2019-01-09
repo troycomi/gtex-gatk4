@@ -9,6 +9,5 @@ snakemake --cluster-config 'della_cluster.yaml' \
     --cluster "sbatch --cpus-per-task={cluster.n} \
                 --mem={cluster.memory} --time={cluster.time} \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname}" \
-    --use-singularity -w 60 -rp -j 250 \
-    --report report.html \
-    --dag | dot -Tsvg > dag.svg
+    --use-singularity -w 60 -rp -j 250
+    #--dag | dot -Tsvg > dag.svg

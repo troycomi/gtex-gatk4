@@ -2,6 +2,7 @@ import gzip
 import sys
 import os
 import io
+from glob import glob
 
 
 writers = {}
@@ -9,6 +10,11 @@ fnamebase = os.path.split(sys.argv[1])[1].split('_')
 fnamebase[0] = os.path.join(
     os.path.split(sys.argv[1])[0],
     fnamebase[0])
+
+# exit early if there are existing files (does not check for partial files!)
+existing = glob(f"{fnamebase[0]}_*_{fnamebase[1]}")
+if len(existing) > 0:
+    sys.exit(0)
 
 with io.BufferedReader(gzip.open(sys.argv[1], 'rb')) as fastq:
     step = 0
@@ -27,6 +33,3 @@ with io.BufferedReader(gzip.open(sys.argv[1], 'rb')) as fastq:
 
     for w in writers.values():
         w.close()
-
-    for k in writers.keys():
-        print(f"{fnamebase[0]}_{key}_{fnamebase[1]} ")

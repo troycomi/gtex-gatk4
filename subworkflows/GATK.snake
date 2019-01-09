@@ -1,8 +1,6 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK'] = expand(paths['dedup_bam'], id=ids)
-    # add more with extend
-
-report: "report/gatk.rst"
+    subw_outputs_dict['GATK'] = expand(paths['recal_bam'], id=ids)
+    subw_outputs_dict['GATK'].extend(expand(paths['recal_covariates'], id=ids))
 
 rule fastq_to_ubam:
     input:
@@ -16,33 +14,38 @@ rule fastq_to_ubam:
         paths['container']
 
     shell:
-        'RG1=($(python {paths[scripts]}/split_fastq.py {input.R1})) &\n'
-        'RG2=($(python {paths[scripts]}/split_fastq.py {input.R2}))\n'
+        'python {paths[base]}/scripts/split_fastq.py {input.R1} & \n'
+        'python {paths[base]}/scripts/split_fastq.py {input.R2} \n'
         'wait \n'
-        'OUT_FILES=() \n'
+        'RG1=($(python {paths[base]}/scripts/get_fastq.py {input.R1})) \n'
+        'RG2=($(python {paths[base]}/scripts/get_fastq.py {input.R2})) \n'
+        'TEMP_UBAMS=() \n'
+        'UBAMS_ARG=() \n'
         'for i in ${{!RG1[@]}}; do \n'
-            'OUT_FILE=$(dirname $RG1[$i])$(basename $RG1[$i] | '
-                'cut -d"." -f 1 | cut -d "_" -f 1-3).ubam \n'
-            'RG=$(basename $RG1[$i] | cut -d "_" -f 2,3 | tr "_" "."i) \n'
+            'TEMP_UBAM=$(dirname ${{RG1[$i]}})/$(basename ${{RG1[$i]}} | '  
+                'cut -d"." -f 1 | cut -d "_" -f 1-3).ubam  \n'
+            'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3 | tr "_" "."i)  \n'
             'gatk --java-options "-Xmx{config[gatk][FastqToSam][memory]}" '
                 'FastqToSam '
-                '-F1=$RG1[$i] '
-                '-F2=$RG2[$i] '
+                '-F1=${{RG1[$i]}} '
+                '-F2=${{RG2[$i]}} '
                 '-SM={wildcards.id} '
-                '-RG=${{$RG}}.{wildcards.id} '
-                '-PU=${{$RG}}.{wildcards.id} '
-                '-O=$OUT_FILE '
+                '-RG=${{RG}}.{wildcards.id} '
+                '-PU=${{RG}}.{wildcards.id} '
+                '-O=$TEMP_UBAM '
                 '--VERBOSITY={config[gatk][verbosity]} '
-                '{config[gatk][FastqToSam][options]}\n'
-            'OUT_FILES+=$OUT_FILE \n'
-            'rm $RG1[$i] $RG2[$i] \n'
-        'done \n'
-        'gatk --java-options "Xmx{config[gatk][MergeSamFiles][memory]}" '
+                '{config[gatk][FastqToSam][options]} \n'
+            'TEMP_UBAMS+=($TEMP_UBAM)  \n'
+            'UBAMS_ARG+=(-I $TEMP_UBAM)  \n'
+        'done  \n'
+        'gatk --java-options "-Xmx{config[gatk][MergeSamFiles][memory]}" '
             'MergeSamFiles '
             '{config[gatk][MergeSamFiles][options]} '
             '--VERBOSITY={config[gatk][verbosity]} '
             '-O {output} '
-            '${{OUT_FILES[*]}}'
+            '${{UBAMS_ARG[*]}} \n'
+        'rm ${{RG1[@]}} ${{RG2[@]}}  \n'
+        'rm ${{TEMP_UBAMS[*]}}'
 
 rule mark_adapters:
     input:
@@ -82,7 +85,7 @@ rule map_bam:
             '--FASTQ=/dev/stdout '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--TMP_DIR={paths[temp_dir]} '
-            '{config[gatk][SamToFastq][options] | \n'
+            '{config[gatk][SamToFastq][options]} | \n'
         'bwa mem '
             '{config[gatk][Bwa_Mem][options]} '
             '-p {paths[ref_genome]} '
@@ -95,7 +98,7 @@ rule map_bam:
             '-R {paths[ref_genome]} '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--TMP_DIR={paths[temp_dir]} '
-            '{config[gatk][MergeBamAlignment][options]'
+            '{config[gatk][MergeBamAlignment][options]}'
 
 rule dedup_bam:
     input:
@@ -117,4 +120,75 @@ rule dedup_bam:
             '--VERBOSITY={config[gatk][verbosity]} \n'
         'samtools index {output.bam}'
 
+def get_bam(wildcards):
+    if wildcards.type == 'before':
+        return paths['dedup_bam']
+    elif wildcards.type == 'after':
+        return paths['recal_bam']
+    else:
+        raise ValueError("Unknown bqsr table type {}".format(wildcards.type))
 
+rule bqsr_table:
+    input:
+        get_bam
+
+    output:
+        paths['recal_table']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'BaseRecalibrator '
+            '-R {paths[ref_genome]} '
+            '{config[gatk][BQSR][known_sites]} '
+            '-L {config[gatk][BQSR][target_intervals]} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '-I {input} '
+            '-O {output}'
+
+def get_before_table(wildcards):
+    return {'bam': paths['dedup_bam'],
+            'table': paths['recal_table'].replace('{type}', 'before')}
+
+rule bqsr_bam:
+    input:
+        unpack(get_before_table)
+
+    output:
+        bam=paths['recal_bam']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'ApplyBQSR '
+            '-R {paths[ref_genome]} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '-bqsr {input.table} '
+            '-I {input.bam} '
+            '-O {output.bam}'
+
+def get_tables(wildcards):
+    return {'before': paths['recal_table'].replace('{type}', 'before'),
+            'after': paths['recal_table'].replace('{type}', 'after')}
+
+rule analyze_bqsr:
+    input:
+        unpack(get_tables)
+
+    output:
+        paths['recal_covariates']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'AnalyzeCovariates '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '-before {input.before} '
+            '-after {input.after} '
+            '-plots {output}'

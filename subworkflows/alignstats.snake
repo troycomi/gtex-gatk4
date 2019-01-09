@@ -1,0 +1,16 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['alignstats'] = expand(paths['alignstats_output'], id=ids)
+
+rule alignstats:
+    input:
+        paths['alignstats_input']
+
+    output:
+        paths['alignstats_output']
+
+    shell:
+        '{paths[alignstats]} '
+            '-i {input} '
+            '-o {output} '
+            '-t {paths[alignstats_target]} '
+            '{config[alignstats][options]}'
