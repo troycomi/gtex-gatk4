@@ -6,7 +6,7 @@ main:
 path:
     container: "docker://broadinstitute/gatk"
     base: "/home/tcomi/projects/gtex-gatk4"
-    temp_dir: "/scatch/"
+    temp_dir: "/scratch"
     
     # directory to hold all data
     data_root: "/tigress/tcomi/gatk4devel"
@@ -18,14 +18,24 @@ path:
     ubam: "__DATA_ROOT__/ubams/{id}.ubam"
     marked_bam: "__DATA_ROOT__/marked_bam/{id}.marked.bam"
     marked_metric: "__DATA_ROOT__/marked_bam/{id}.marked.metrics.txt"
+    marked_fastq:  "__DATA_ROOT__/marked_fastq/{id}.marked.fastq"
+    temp_mapped_bam: "__DATA_ROOT__/mapped_bam/{id}.temp.bam"
     mapped_bam: "__DATA_ROOT__/mapped_bam/{id}.mapped.bam"
+    mapped_bai: "__DATA_ROOT__/mapped_bam/{id}.mapped.bai"
 
     dedup_bam: "__DATA_ROOT__/dedup_bam/{id}.dedup.bam"
+    dedup_bai: "__DATA_ROOT__/dedup_bam/{id}.dedup.bam.bai"
     dedup_metric: "__DATA_ROOT__/dedup_bam/{id}.dupmetrics.txt"
 
     recal_bam: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.bam"
     recal_table: "__DATA_ROOT__/bqsr_recal/{id}.{type}_bqsr.table"
     recal_covariates: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.pdf"
+
+    haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_chr{chromosome}.bed"
+    haplotype_output: "__DATA_ROOT__/genotype/gvcfs/chr{chromosome}/{id}.raw_variants.g.vcf"
+
+    name_map: "__TEMP_DIR__/chr{chromosome}.map"
+    1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/VariantCalling.nobackup/RawVariants/BP_resolution/Supp1kg/Chr{chromosome}"
         
     alignstats: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/src/alignstats/alignstats"
     alignstats_input: "__RECAL_BAM__"
@@ -33,20 +43,20 @@ path:
     alignstats_target: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_allchr_XY.bed"
 
     #References
-    ref_genome: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/hs37d5.fa"
+    ref_genome: "/scratch/gpfs/tcomi/temp/hs37d5.fa"
 
 gatk:
     verbosity: "ERROR"
     FastqToSam:
-        memory: "4G"
+        memory: "2G"
         options: "-PL=ILLUMINA"
 
     MergeSamFiles:
-        memory: "4G"
+        memory: "2G"
         options: "-SO queryname"
 
     MarkIlluminaAdapters:
-        memory: "4G"
+        memory: "1G"
 
     SamToFastq:
         memory: "4G"
@@ -60,7 +70,7 @@ gatk:
         options: "-M -t 2"
 
     MergeBamAlignment:
-        memory: "4G"
+        memory: "7G"
         options: >
             --CREATE_INDEX=true
             --ADD_MATE_CIGAR=true
@@ -79,6 +89,12 @@ gatk:
             --known-sites /tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_reference_bundle_b37/Mills_and_1000G_gold_standard.indels.b37.vcf.gz
             --known-sites /tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_reference_bundle_b37/1000G_phase1.indels.b37.vcf.gz
         target_intervals: /tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/SureSelect_Human_All_Exon_V5/S04380110_SureSelect_V5_target_regions_allchr_XY.bed
+
+    HaplotypeCaller:
+        memory: "4G"
+        options: >
+            --interval-padding 150
+            --emit-ref-confidence BP_RESOLUTION
 
 alignstats:
     options: >

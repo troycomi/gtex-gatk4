@@ -1,5 +1,7 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK'] = expand(paths['recal_bam'], id=ids)
+    subw_outputs_dict['GATK'] = expand(paths['haplotype_output'],
+                                       id=ids,
+                                       chromosome=range(21,23))
     subw_outputs_dict['GATK'].extend(expand(paths['recal_covariates'], id=ids))
 
 rule fastq_to_ubam:
@@ -8,13 +10,18 @@ rule fastq_to_ubam:
         R2=paths['fastq_R2']
 
     output:
-        paths['ubam']
+        temp(paths['ubam'])
 
     singularity:
         paths['container']
 
+    resources:
+        fastq_instances=1
+
     shell:
+        'zcat {input.R1} | '
         'python {paths[base]}/scripts/split_fastq.py {input.R1} & \n'
+        'zcat {input.R2} | '
         'python {paths[base]}/scripts/split_fastq.py {input.R2} \n'
         'wait \n'
         'RG1=($(python {paths[base]}/scripts/get_fastq.py {input.R1})) \n'
@@ -52,7 +59,7 @@ rule mark_adapters:
         paths['ubam']
 
     output:
-        bam=paths['marked_bam'],
+        bam=temp(paths['marked_bam']),
         metric=paths['marked_metric']
 
     singularity:
@@ -67,34 +74,64 @@ rule mark_adapters:
             '--VERBOSITY={config[gatk][verbosity]} '
             '--TMP_DIR={paths[temp_dir]} '
 
-rule map_bam:
+rule sam_to_fastq:
     input:
-        marked=paths['marked_bam'],
-        ubam=paths['ubam']
+        marked=paths['marked_bam']
 
     output:
-        paths['mapped_bam']
+        pipe(paths['marked_fastq'])
 
     singularity:
         paths['container']
+
+    group: 'map_bam'
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][SamToFastq][memory]}" '
             'SamToFastq '
             '-I={input.marked} '
-            '--FASTQ=/dev/stdout '
+            '--FASTQ={output} '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--TMP_DIR={paths[temp_dir]} '
-            '{config[gatk][SamToFastq][options]} | \n'
+            '{config[gatk][SamToFastq][options]}'
+
+rule map_bam:
+    input:
+        marked=paths['marked_fastq']
+
+    output:
+        pipe(paths['temp_mapped_bam'])
+
+    group: 'map_bam'
+
+    shell:
         'bwa mem '
             '{config[gatk][Bwa_Mem][options]} '
             '-p {paths[ref_genome]} '
-            '/dev/stdin | \n'
+            '{input.marked} > {output} '
+            '2>/dev/null'
+
+rule merge_bam:
+    input:
+        bam=paths['temp_mapped_bam'],
+        ubam=paths['ubam']
+
+    output:
+        bam=temp(paths['mapped_bam']),
+        bai=temp(paths['mapped_bai'])
+
+    singularity:
+        paths['container']
+
+    group: 'map_bam'
+
+            #'--TMP_DIR={paths[temp_dir]} '
+    shell:
         'gatk --java-options "-Xmx{config[gatk][MergeBamAlignment][memory]}" '
             'MergeBamAlignment '
-            '--ALIGNED_BAM=/dev/stdin '
+            '--ALIGNED_BAM={input.bam} '
             '--UNMAPPED_BAM={input.ubam} '
-            '--OUTPUT={output} '
+            '--OUTPUT={output.bam} '
             '-R {paths[ref_genome]} '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--TMP_DIR={paths[temp_dir]} '
@@ -102,11 +139,13 @@ rule map_bam:
 
 rule dedup_bam:
     input:
-        paths['mapped_bam']
+        bam=paths['mapped_bam'],
+        bai=paths['mapped_bai']
 
     output:
-        bam=paths['dedup_bam'],
-        metric=paths['dedup_metric']
+        bam=temp(paths['dedup_bam']),
+        metric=paths['dedup_metric'],
+        bai=temp(paths['dedup_bai'])
 
     singularity:
         paths['container']
@@ -114,7 +153,7 @@ rule dedup_bam:
     shell:
         'gatk --java-options "-Xmx{config[gatk][MarkDuplicates][memory]}" '
             'MarkDuplicates '
-            '-I={input} '
+            '-I={input.bam} '
             '-O={output.bam} '
             '--METRICS_FILE={output.metric} '
             '--VERBOSITY={config[gatk][verbosity]} \n'
@@ -142,14 +181,15 @@ rule bqsr_table:
         'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
             'BaseRecalibrator '
             '-R {paths[ref_genome]} '
-            '{config[gatk][BQSR][known_sites]} '
             '-L {config[gatk][BQSR][target_intervals]} '
-            '--VERBOSITY={config[gatk][verbosity]} '
+            '--verbosity {config[gatk][verbosity]} '
             '-I {input} '
-            '-O {output}'
+            '-O {output} '
+            '{config[gatk][BQSR][known_sites]} '
 
 def get_before_table(wildcards):
     return {'bam': paths['dedup_bam'],
+            'bai': paths['dedup_bai'],
             'table': paths['recal_table'].replace('{type}', 'before')}
 
 rule bqsr_bam:
@@ -166,7 +206,7 @@ rule bqsr_bam:
         'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
             'ApplyBQSR '
             '-R {paths[ref_genome]} '
-            '--VERBOSITY={config[gatk][verbosity]} '
+            '--verbosity {config[gatk][verbosity]} '
             '-bqsr {input.table} '
             '-I {input.bam} '
             '-O {output.bam}'
@@ -188,7 +228,55 @@ rule analyze_bqsr:
     shell:
         'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
             'AnalyzeCovariates '
-            '--VERBOSITY={config[gatk][verbosity]} '
+            '--verbosity {config[gatk][verbosity]} '
             '-before {input.before} '
             '-after {input.after} '
             '-plots {output}'
+
+rule haplotype_caller:
+    input:
+        bam=paths['recal_bam'],
+        interval=paths['haplotype_intervals']
+
+    output:
+        paths['haplotype_output']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][HaplotypeCaller][memory]}" '
+            'HaplotypeCaller  '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {paths[ref_genome]} '
+            '-I {input.bam} '
+            '-L {input.interval} '
+            '-O {output} '
+            '{config[gatk][HaplotypeCaller][options]}'
+
+rule name_map:
+    output:
+        temp(paths['name_map'])
+
+    run:
+        import glob
+        import os
+        with open(output[0], 'w') as outfile:
+            # get variants in output
+            variant_dir = os.path.split(paths['haplotype_output'])[0]
+            variant_dir = variant_dir.replace('{chromosome}', wildcards.chromosome)
+            # get variants in 1000 genomes
+            supp_dir = paths['1000G_dir'].replace('{chromosome}', wildcards.chromosome)
+
+            split_chars = ['.', '_']
+            for i, d in enumerate([variant_dir, supp_dir]):
+                for f in glob.glob(d + "/*.g.vcf"):
+                    sample = os.path.split(f)[1]
+                    sample = sample[:sample.find(split_chars[i])]  # remove after first .
+                    #outfile.write(
+                    print(
+                        "{}\t{}\n".format(
+                            sample,
+                            f))
+
+#TODO: genomics db import and genotype, make the name map a piped/temp file to generate with snakemake
