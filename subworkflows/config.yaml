@@ -1,13 +1,16 @@
+---
 main:
     subworkflows:
-        - "GATK"
+        - "GATK-map"
+        - "GATK-bqsr"
+        - "GATK-genotype"
         - "alignstats"
 
 path:
     container: "docker://broadinstitute/gatk"
     base: "/home/tcomi/projects/gtex-gatk4"
     temp_dir: "/scratch"
-    
+
     # directory to hold all data
     data_root: "/tigress/tcomi/gatk4devel"
 
@@ -15,51 +18,64 @@ path:
     fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
     fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
 
-    ubam: "__DATA_ROOT__/ubams/{id}.ubam"
-    marked_bam: "__DATA_ROOT__/marked_bam/{id}.marked.bam"
-    marked_metric: "__DATA_ROOT__/marked_bam/{id}.marked.metrics.txt"
-    marked_fastq:  "__DATA_ROOT__/marked_fastq/{id}.marked.fastq"
-    temp_mapped_bam: "__DATA_ROOT__/mapped_bam/{id}.temp.bam"
-    mapped_bam: "__DATA_ROOT__/mapped_bam/{id}.mapped.bam"
-    mapped_bai: "__DATA_ROOT__/mapped_bam/{id}.mapped.bai"
+    mapping_base: "__DATA_ROOT__/mapping"
+    ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
+    marked_bam: "__MAPPING_BASE__/marked_bam/{id}.marked.bam"
+    marked_metric: "__MAPPING_BASE__/marked_bam/{id}.marked.metrics.txt"
+    marked_fastq: "__MAPPING_BASE__/marked_fastq/{id}.marked.fastq"
+    temp_mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.temp.bam"
+    mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bam"
+    mapped_bai: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bai"
 
-    dedup_bam: "__DATA_ROOT__/dedup_bam/{id}.dedup.bam"
-    dedup_bai: "__DATA_ROOT__/dedup_bam/{id}.dedup.bam.bai"
-    dedup_metric: "__DATA_ROOT__/dedup_bam/{id}.dupmetrics.txt"
+    dedup_bam: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam"
+    dedup_bai: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam.bai"
+    dedup_metric: "__MAPPING_BASE__/dedup_bam/{id}.dupmetrics.txt"
 
     recal_bam: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.bam"
     recal_table: "__DATA_ROOT__/bqsr_recal/{id}.{type}_bqsr.table"
     recal_covariates: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.pdf"
 
-    haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_chr{chromosome}.bed"
-    haplotype_output: "__DATA_ROOT__/genotype/gvcfs/chr{chromosome}/{id}.raw_variants.g.vcf"
-
+    # supplemental files for haplotype calling
+    haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                          Design_Annotation_files/PrimaryTarget/Unpadded/\
+                          IntFormat/primary_target_regions_chr{chromosome}.bed"
     name_map: "__TEMP_DIR__/chr{chromosome}.map"
-    1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/VariantCalling.nobackup/RawVariants/BP_resolution/Supp1kg/Chr{chromosome}"
-        
-    alignstats: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/src/alignstats/alignstats"
+    1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+                VariantCalling.nobackup/RawVariants/BP_resolution/\
+                Supp1kg/Chr{chromosome}"
+
+    haplotype_output: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
+                       {id}.raw_variants.g.vcf"
+    genomics_db: "__DATA_ROOT__/genotype/DB/chr{chromosome}"
+    genotype_gvcf: "__DATA_ROOT__/genotype/chr{chromosome}.vcf.gz"
+
+    # exe location
+    alignstats: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                 src/alignstats/alignstats"
     alignstats_input: "__RECAL_BAM__"
     alignstats_output: "__DATA_ROOT__/alignstats/{id}.report.txt"
-    alignstats_target: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_allchr_XY.bed"
+    alignstats_target: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                        Design_Annotation_files/PrimaryTarget/Unpadded/\
+                        IntFormat/primary_target_regions_allchr_XY.bed"
 
-    #References
+    # References
     ref_genome: "/scratch/gpfs/tcomi/temp/hs37d5.fa"
 
 gatk:
     verbosity: "ERROR"
     FastqToSam:
-        memory: "2G"
+        memory: "4G"
         options: "-PL=ILLUMINA"
 
     MergeSamFiles:
-        memory: "2G"
+        memory: "4G"
         options: "-SO queryname"
 
     MarkIlluminaAdapters:
-        memory: "1G"
+        memory: "4G"
 
     SamToFastq:
-        memory: "4G"
+        memory: "7G"
         options: >
             --CLIPPING_ATTRIBUTE=XT
             --CLIPPING_ACTION=2
@@ -95,6 +111,17 @@ gatk:
         options: >
             --interval-padding 150
             --emit-ref-confidence BP_RESOLUTION
+
+    GenomicsDBImport:
+        memory: "4G"
+        options: >
+            --batch-size 50
+
+    GenotypeGVCFs:
+        memory: "4G"
+        options: >
+            --use-new-qual-calculator
+            --interval-padding 100
 
 alignstats:
     options: >

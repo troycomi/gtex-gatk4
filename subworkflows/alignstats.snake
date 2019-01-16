@@ -9,6 +9,7 @@ rule alignstats:
         paths['alignstats_output']
 
     shell:
+        'module load samtools \n'
         '{paths[alignstats]} '
             '-i {input} '
             '-o {output} '

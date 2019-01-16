@@ -1,56 +1,40 @@
+---
 __default__:
     "n": 1
     "memory": '1G'
     "time": '0-2'
     "jobname": 'snake'
 
-fastq_to_ubam:
-    "jobname": 'fastq_to_ubam'
-    "n": 2
-    "time": '0-1'
-    "memory": '3G'
-
-mark_adapters:
-    "jobname": 'mark_adapters'
-    "time": '0-0:30'
-    "memory": '1G'
-
-map_bam:
-    "jobname": 'map_bam'
-    "time": '0-6'
+map_fastq:
+    "jobname": 'map_fastq'
+    "time": '0-8'
     "n": 3
-    "memory": '15G'
+    "memory": '18G'
 
-dedup_bam:
-    "jobname": 'dedup_bam'
-    "time": '0-0:30'
-    "memory": '5G'
-
-bqsr_table:
-    "jobname": 'bqsr_table'
+bqsr:
+    "jobname": 'bqsr'
     "memory": '1G'
-    "time": '0-1'
-
-analyze_bqsr:
-    "jobname": 'analyze_bqsr'
-    "memory": '1G'
-    "time": '0-1'
-
-bqsr_bam:
-    "jobname": 'bqsr_bam'
-    "memory": '1G'
+    "time": '0-2'
 
 alignstats:
     "jobname": 'alignstats'
     "memory": '1200M'
-    "time": '0-2:10'
+    "time": '0-0:10'
     "n": 2
 
-haplotype_caller:
-    "jobname": 'haplotype'
+# contains mapping and all haplotype caller runs
+haplotype:
+    "jobname": 'genotype'
     "memory": '5G'
-    "time": '0-12'
+    "time": '0-8'
 
-name_map:
-    "jobname": 'name_map'
-    "time": '0-0:10'
+db_import:
+    "jobname": 'db_import'
+    "memory": '5G'
+    "time": '0-8'
+
+genotype_gvcf:
+    "jobname": 'genotype_gvcf'
+    "memory": '5G'
+    "time": '1-0'
+

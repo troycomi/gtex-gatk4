@@ -1,0 +1,83 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-bqsr'] = expand(paths['recal_covariates'], id=ids)
+
+
+def get_bam(wildcards):
+    if wildcards.type == 'before':
+        return {'bam': paths['dedup_bam'], 'bai': paths['dedup_bai']}
+    elif wildcards.type == 'after':
+        return {'bam': ancient(paths['recal_bam'])}
+    else:
+        raise ValueError("Unknown bqsr table type {}".format(wildcards.type))
+
+rule bqsr_table:
+    input:
+        unpack(get_bam)
+
+    output:
+        paths['recal_table']
+
+    singularity:
+        paths['container']
+
+    group: 'bqsr'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'BaseRecalibrator '
+            '-R {paths[ref_genome]} '
+            '-L {config[gatk][BQSR][target_intervals]} '
+            '--verbosity {config[gatk][verbosity]} '
+            '-I {input.bam} '
+            '-O {output} '
+            '{config[gatk][BQSR][known_sites]} '
+
+def get_before_table(wildcards):
+    return {'bam': paths['dedup_bam'],
+            'bai': paths['dedup_bai'],
+            'table': paths['recal_table'].replace('{type}', 'before')}
+
+rule bqsr_bam:
+    input:
+        unpack(get_before_table)
+
+    output:
+        bam=protected(paths['recal_bam'])
+
+    singularity:
+        paths['container']
+
+    group: 'bqsr'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'ApplyBQSR '
+            '-R {paths[ref_genome]} '
+            '--verbosity {config[gatk][verbosity]} '
+            '-bqsr {input.table} '
+            '-I {input.bam} '
+            '-O {output.bam}'
+
+def get_tables(wildcards):
+    return {'before': paths['recal_table'].replace('{type}', 'before'),
+            'after': paths['recal_table'].replace('{type}', 'after')}
+
+rule analyze_bqsr:
+    input:
+        unpack(get_tables)
+
+    output:
+        paths['recal_covariates']
+
+    singularity:
+        paths['container']
+
+    group: 'bqsr'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+            'AnalyzeCovariates '
+            '--verbosity {config[gatk][verbosity]} '
+            '-before {input.before} '
+            '-after {input.after} '
+            '-plots {output}'

@@ -7,7 +7,7 @@ from glob import glob
 writers = {}
 fnamebase = os.path.split(sys.argv[1])[1].split('_')
 fnamebase[0] = os.path.join(
-    os.path.split(sys.argv[1])[0],
+    os.path.split(sys.argv[2])[0],
     fnamebase[0])
 fnamebase[1] = os.path.splitext(fnamebase[1])[0]  # remove gz
 

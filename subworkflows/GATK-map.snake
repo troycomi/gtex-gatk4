@@ -1,0 +1,166 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=ids)
+
+rule fastq_to_ubam:
+    input:
+        R1=paths['fastq_R1'],
+        R2=paths['fastq_R2']
+
+    output:
+        temp(paths['ubam'])
+
+    singularity:
+        paths['container']
+
+    resources:
+        fastq_instances=1
+
+    group: 'map_fastq'
+
+    shell:
+        'zcat {input.R1} | '
+            'python {paths[base]}/scripts/split_fastq.py \
+                {input.R1} {output} & \n'
+        'zcat {input.R2} | '
+            'python {paths[base]}/scripts/split_fastq.py \
+                {input.R2} {output} \n'
+        'wait \n'
+        'RG1=($(python {paths[base]}/scripts/get_fastq.py \
+            {input.R1} {output} )) \n'
+        'RG2=($(python {paths[base]}/scripts/get_fastq.py \
+            {input.R2} {output} )) \n'
+        'TEMP_UBAMS=() \n'
+        'UBAMS_ARG=() \n'
+        'for i in ${{!RG1[@]}}; do \n'
+            'TEMP_UBAM=$(dirname ${{RG1[$i]}})/$(basename ${{RG1[$i]}} | '  
+                'cut -d"." -f 1 | cut -d "_" -f 1-3).ubam  \n'
+            'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3 | tr "_" "."i)  \n'
+            'gatk --java-options "-Xmx{config[gatk][FastqToSam][memory]}" '
+                'FastqToSam '
+                '-F1=${{RG1[$i]}} '
+                '-F2=${{RG2[$i]}} '
+                '-SM={wildcards.id} '
+                '-RG=${{RG}}.{wildcards.id} '
+                '-PU=${{RG}}.{wildcards.id} '
+                '-O=$TEMP_UBAM '
+                '--VERBOSITY={config[gatk][verbosity]} '
+                '{config[gatk][FastqToSam][options]} \n'
+            'TEMP_UBAMS+=($TEMP_UBAM)  \n'
+            'UBAMS_ARG+=(-I $TEMP_UBAM)  \n'
+        'done  \n'
+        'gatk --java-options "-Xmx{config[gatk][MergeSamFiles][memory]}" '
+            'MergeSamFiles '
+            '{config[gatk][MergeSamFiles][options]} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '-O {output} '
+            '${{UBAMS_ARG[*]}} \n'
+        'rm ${{RG1[@]}} ${{RG2[@]}}  \n'
+        'rm ${{TEMP_UBAMS[*]}}'
+
+rule mark_adapters:
+    input:
+        paths['ubam']
+
+    output:
+        bam=temp(paths['marked_bam']),
+        metric=paths['marked_metric']
+
+    singularity:
+        paths['container']
+
+    group: 'map_fastq'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MarkIlluminaAdapters][memory]}" '
+            'MarkIlluminaAdapters '
+            '-I={input} '
+            '-O={output.bam} '
+            '-M={output.metric} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '--TMP_DIR={paths[temp_dir]} '
+
+rule sam_to_fastq:
+    input:
+        marked=paths['marked_bam']
+
+    output:
+        pipe(paths['marked_fastq'])
+
+    singularity:
+        paths['container']
+
+    group: 'map_fastq'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][SamToFastq][memory]}" '
+            'SamToFastq '
+            '-I={input.marked} '
+            '--FASTQ={output} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '--TMP_DIR={paths[temp_dir]} '
+            '{config[gatk][SamToFastq][options]}'
+
+rule map_bam:
+    input:
+        marked=paths['marked_fastq']
+
+    output:
+        pipe(paths['temp_mapped_bam'])
+
+    group: 'map_fastq'
+
+    shell:
+        'bwa mem '
+            '{config[gatk][Bwa_Mem][options]} '
+            '-p {paths[ref_genome]} '
+            '{input.marked} > {output} '
+            '2>/dev/null'
+
+rule merge_bam:
+    input:
+        bam=paths['temp_mapped_bam'],
+        ubam=paths['ubam']
+
+    output:
+        bam=temp(paths['mapped_bam']),
+        bai=temp(paths['mapped_bai'])
+
+    singularity:
+        paths['container']
+
+    group: 'map_fastq'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MergeBamAlignment][memory]}" '
+            'MergeBamAlignment '
+            '--ALIGNED_BAM={input.bam} '
+            '--UNMAPPED_BAM={input.ubam} '
+            '--OUTPUT={output.bam} '
+            '-R {paths[ref_genome]} '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '--TMP_DIR={paths[temp_dir]} '
+            '{config[gatk][MergeBamAlignment][options]}'
+
+rule dedup_bam:
+    input:
+        bam=paths['mapped_bam'],
+        bai=paths['mapped_bai']
+
+    output:
+        bam=protected(paths['dedup_bam']),
+        bai=protected(paths['dedup_bai']),
+        metric=paths['dedup_metric']
+
+    singularity:
+        paths['container']
+
+    group: 'map_fastq'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MarkDuplicates][memory]}" '
+            'MarkDuplicates '
+            '-I={input.bam} '
+            '-O={output.bam} '
+            '--METRICS_FILE={output.metric} '
+            '--VERBOSITY={config[gatk][verbosity]} \n'
+        'samtools index {output.bam}'

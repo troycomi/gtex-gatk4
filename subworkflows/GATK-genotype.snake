@@ -1,0 +1,100 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-genotype'] = expand(paths['genotype_gvcf'],
+                                         chromosome=range(21,23))
+
+rule haplotype_caller:
+    input:
+        bam=paths['recal_bam'],
+        interval=paths['haplotype_intervals']
+
+    output:
+        paths['haplotype_output']
+
+    singularity:
+        paths['container']
+
+    group: 'haplotype'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][HaplotypeCaller][memory]}" '
+            'HaplotypeCaller  '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {paths[ref_genome]} '
+            '-I {input.bam} '
+            '-L {input.interval} '
+            '-O {output} '
+            '{config[gatk][HaplotypeCaller][options]}'
+
+rule name_map:
+    input:
+        lambda wildcards: expand(paths['haplotype_output']\
+                                 .replace('{chromosome}', \
+                                          wildcards.chromosome),
+                                 id=ids)
+
+    output:
+        temp(paths['name_map'])
+
+    group: 'haplotype'
+
+    run:
+        import glob
+        import os
+        with open(output[0], 'w') as outfile:
+            # get variants in output
+            variant_dir = os.path.split(paths['haplotype_output'])[0]
+            variant_dir = variant_dir.replace('{chromosome}', wildcards.chromosome)
+            # get variants in 1000 genomes
+            supp_dir = paths['1000G_dir'].replace('{chromosome}', wildcards.chromosome)
+
+            split_chars = ['.', '_']
+            for i, d in enumerate([variant_dir, supp_dir]):
+                for f in glob.glob(d + "/*.g.vcf"):
+                    sample = os.path.split(f)[1]
+                    sample = sample[:sample.find(split_chars[i])]  # remove after first .
+                    outfile.write(
+                        "{}\t{}\n".format(
+                            sample,
+                            f))
+
+rule db_import:
+    input:
+        paths['name_map']
+
+    output:
+        temp(directory(paths['genomics_db']))
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][GenomicsDBImport][memory]}" '
+            'GenomicsDBImport  '
+            '--verbosity {config[gatk][verbosity]} '
+            '-L {wildcards.chromosome} '
+            '--sample-name-map {input} '
+            '--genomicsdb-workspace-path {output} '
+            '{config[gatk][GenomicsDBImport][options]} '
+
+rule genotype_gvcf:
+    input:
+        db=paths['genomics_db'],
+        intervals=paths['haplotype_intervals']
+
+    output:
+        protected(paths['genotype_gvcf'])
+
+    singularity:
+        paths['container']
+
+    group: 'genotype'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][GenotypeGVCFs][memory]}" '
+            'GenotypeGVCFs  '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {paths[ref_genome]} '
+            '-L {input.intervals} '
+            '--variant gendb://{input.db} '
+            '-O {output} '
+            '{config[gatk][GenotypeGVCFs][options]}'
