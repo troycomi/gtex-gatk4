@@ -1,5 +1,5 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-genotype'] = expand(paths['genotype_gvcf'],
+    subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_vcf'],
                                          chromosome=range(21,23))
 
 rule haplotype_caller:
@@ -8,7 +8,8 @@ rule haplotype_caller:
         interval=paths['haplotype_intervals']
 
     output:
-        paths['haplotype_output']
+        paths['haplotype_raw'],
+        paths['haplotype_idx']
 
     singularity:
         paths['container']
@@ -27,7 +28,11 @@ rule haplotype_caller:
 
 rule name_map:
     input:
-        lambda wildcards: expand(paths['haplotype_output']\
+        lambda wildcards: expand(paths['haplotype_raw']\
+                                 .replace('{chromosome}', \
+                                          wildcards.chromosome),
+                                 id=ids),
+        lambda wildcards: expand(paths['haplotype_idx']\
                                  .replace('{chromosome}', \
                                           wildcards.chromosome),
                                  id=ids)
@@ -42,7 +47,7 @@ rule name_map:
         import os
         with open(output[0], 'w') as outfile:
             # get variants in output
-            variant_dir = os.path.split(paths['haplotype_output'])[0]
+            variant_dir = os.path.split(paths['haplotype_raw'])[0]
             variant_dir = variant_dir.replace('{chromosome}', wildcards.chromosome)
             # get variants in 1000 genomes
             supp_dir = paths['1000G_dir'].replace('{chromosome}', wildcards.chromosome)
@@ -82,19 +87,74 @@ rule genotype_gvcf:
         intervals=paths['haplotype_intervals']
 
     output:
-        protected(paths['genotype_gvcf'])
+        vcf=paths['genotype_gvcf'],
+        tbi=paths['genotype_tbi']
 
     singularity:
         paths['container']
 
-    group: 'genotype'
-
     shell:
         'gatk --java-options "-Xmx{config[gatk][GenotypeGVCFs][memory]}" '
-            'GenotypeGVCFs  '
+            'GenotypeGVCFs '
             '--verbosity {config[gatk][verbosity]} '
             '-R {paths[ref_genome]} '
             '-L {input.intervals} '
             '--variant gendb://{input.db} '
-            '-O {output} '
-            '{config[gatk][GenotypeGVCFs][options]}'
+            '-O {output.vcf} '
+            '{config[gatk][GenotypeGVCFs][options]} '
+            '2 > /dev/null'
+
+def get_variant_options(wildcards):
+    return config['gatk']['VariantRecalibrator']['options'].format(
+            hapmap=paths['ref_hapmap'],
+            omni=paths['ref_omni'],
+            OKG=paths['ref_1000g'],
+            dbsnp=paths['ref_dbsnp'])
+
+rule variant_recal:
+    input:
+        ref=paths['ref_genome'],
+        vcf=paths['genotype_gvcf']
+
+    output:
+        recal=paths['vqsr_recal'],
+        tranche=paths['vqsr_vcf'],
+
+    params:
+        get_variant_options
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][VariantRecalibrator][memory]}" '
+            'VariantRecalibrator '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {input.ref} '
+            '-V {input.vcf} '
+            '--recal-file {output.recal} '
+            '--tranches-file {output.tranche} '
+            '{params}'
+
+rule apply_recal:
+    input:
+        ref=paths['ref_genome'],
+        vcf=paths['genotype_gvcf'],
+        recal=paths['vqsr_recal'],
+        tranche=paths['vqsr_vcf'],
+
+    output:
+        paths['vqsr_vcf']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][ApplyRecalibration][memory]}" '
+            'ApplyRecalibration '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {input.ref} '
+            '--tranches-file {input.tranche} '
+            '--recal-file {input.recal} '
+            '-O {output.vcf} '
+            '{config[gatk][ApplyVQSR][options]}'

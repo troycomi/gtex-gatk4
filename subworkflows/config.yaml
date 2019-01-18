@@ -4,16 +4,19 @@ main:
         - "GATK-map"
         - "GATK-bqsr"
         - "GATK-genotype"
+        - "GATK-mutect2"
         - "alignstats"
 
 path:
     container: "docker://broadinstitute/gatk"
+    # working directory of Snakefile
     base: "/home/tcomi/projects/gtex-gatk4"
     temp_dir: "/scratch"
 
-    # directory to hold all data
+    # directory to hold all output data
     data_root: "/tigress/tcomi/gatk4devel"
 
+    ### MAPPING ###
     fastq_input: "__DATA_ROOT__/original_fastq"
     fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
     fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
@@ -31,24 +34,56 @@ path:
     dedup_bai: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam.bai"
     dedup_metric: "__MAPPING_BASE__/dedup_bam/{id}.dupmetrics.txt"
 
+    ### BQSR ###
     recal_bam: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.bam"
     recal_table: "__DATA_ROOT__/bqsr_recal/{id}.{type}_bqsr.table"
     recal_covariates: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.pdf"
 
+    ### GENOTYPE ###
     # supplemental files for haplotype calling
     haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
                           Design_Annotation_files/PrimaryTarget/Unpadded/\
                           IntFormat/primary_target_regions_chr{chromosome}.bed"
-    name_map: "__TEMP_DIR__/chr{chromosome}.map"
     1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
                 VariantCalling.nobackup/RawVariants/BP_resolution/\
                 Supp1kg/Chr{chromosome}"
 
-    haplotype_output: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
+    name_map: "__DATA_ROOT__/genotype/maps/chr{chromosome}.map"
+    haplotype_raw: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
                        {id}.raw_variants.g.vcf"
+    haplotype_idx: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
+                       {id}.raw_variants.g.vcf.idx"
     genomics_db: "__DATA_ROOT__/genotype/DB/chr{chromosome}"
-    genotype_gvcf: "__DATA_ROOT__/genotype/chr{chromosome}.vcf.gz"
+    genotype_gvcf: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.vcf.gz"
+    genotype_tbi: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.vcf.tbi"
 
+    reference_bundle: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_reference_bundle_b37"
+    ref_hapmap: "__REFERENCE_BUNDLE__/hapmap_3.3.b37.vcf"
+    ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.b37.vcf"
+    ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.b37.vcf"
+    ref_dbsnp: "__REFERENCE_BUNDLE__/dbsnp_138.b37.vcf"
+    vqsr_recal: "__DATA_ROOT__/genotype/recal/chr{chromosome}.recal"
+    vqsr_tranche: "__DATA_ROOT__/genotype/recal/chr{chromosome}.tranches"
+    vqsr_vcf: "__DATA_ROOT__/genotype/recal/chr{chromosome}.vcf.gz"
+
+    ### MUTECT2 ###
+    sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/SampInfo/sample_details.txt"
+    sites_only: "__DATA_ROOT__/mutect2/sites-only/{id}.vcf.gz"
+    pon_list: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.args"
+    pon: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.gz"
+
+    unfiltered_vcf: "__DATA_ROOT__/mutect2/calls/{id}.vcf.gz"
+    mutect_bam: "__DATA_ROOT__/mutect2/calls/{id}.bam"
+    germline_resource: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_Mutect2_reference_bundle/af-only-gnomad.raw.sites.b37.vcf.gz"
+    exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_allchr_XY.bed"
+
+    filter_input: "__RECAL_BAM__"
+    common_snps: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_Mutect2_reference_bundle/small_exac_common_3_b37.vcf.gz"
+    pileup: "__DATA_ROOT__/mutect2/filtered/{id}_pileup.table"
+    con_tab: "__DATA_ROOT__/mutect2/filtered/{id}_contamination.table"
+    filter_vcf: "__DATA_ROOT__/mutect2/filtered/{id}_filtered.vcf.gz"
+
+    ### ALIGNSTATS ###
     # exe location
     alignstats: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
                  src/alignstats/alignstats"
@@ -58,7 +93,7 @@ path:
                         Design_Annotation_files/PrimaryTarget/Unpadded/\
                         IntFormat/primary_target_regions_allchr_XY.bed"
 
-    # References
+    # Reference with index files
     ref_genome: "/scratch/gpfs/tcomi/temp/hs37d5.fa"
 
 gatk:
@@ -107,7 +142,7 @@ gatk:
         target_intervals: /tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/SureSelect_Human_All_Exon_V5/S04380110_SureSelect_V5_target_regions_allchr_XY.bed
 
     HaplotypeCaller:
-        memory: "4G"
+        memory: "2G"
         options: >
             --interval-padding 150
             --emit-ref-confidence BP_RESOLUTION
@@ -122,6 +157,56 @@ gatk:
         options: >
             --use-new-qual-calculator
             --interval-padding 100
+
+    Mutect2_Sites_Only:
+        memory: "1G"
+        options: >
+            --disable-read-filter MateOnSameContigOrNoMappedMateReadFilter
+
+    CreateSomaticPanelOfNormals:
+        memory: "4G"
+
+    Mutect2_Calls:
+        memory: "3G"
+        options: >
+            --af-of-alleles-not-in-resource 0.0000025
+            --disable-read-filter MateOnSameConticOrNoMappedMateReadFilter
+            --interval-padding 100
+
+    Mutect2_Filter:
+        memory: "1G"
+        options: >
+            --interval-padding 100
+
+    VariantRecalibrator:
+        memory: "4G"
+        options: >
+            -tranche 100.0
+            -tranche 99.9
+            -tranche 99.5
+            -tranche 99.0
+            -tranche 98.5
+            -tranche 98.0
+            -tranche 97.5
+            -tranche 97.0
+            -nt 4
+            -mode SNP
+            -an QD
+            -an MQ
+            -an MQRankSum
+            -an ReadPosRankSum
+            -an FS
+            -an SOR
+            --resource hapmap,known=false,training=true,truth=true,prior=15.0:{hapmap}
+            --resource omni,known=false,training=true,truth=true,prior=12.0:{omni}
+            --resource 1000G,known=false,training=true,truth=false,prior=10.0:{OKG}
+            --resource dbsnp,known=true,training=false,truth=false,prior=2.0:{dbsnp}
+
+    ApplyVQSR:
+        memory: "4G"
+        options: >
+            -mode SNP
+            --ts_filter_level 99.0
 
 alignstats:
     options: >

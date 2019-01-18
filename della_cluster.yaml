@@ -25,16 +25,45 @@ alignstats:
 # contains mapping and all haplotype caller runs
 haplotype:
     "jobname": 'genotype'
-    "memory": '5G'
+    "memory": '2G'
     "time": '0-8'
 
 db_import:
     "jobname": 'db_import'
     "memory": '5G'
-    "time": '0-8'
+    "time": '0-4'
 
 genotype_gvcf:
     "jobname": 'genotype_gvcf'
     "memory": '5G'
     "time": '1-0'
 
+sites_only:
+    "jobname": 'sites_only'
+    "memory": '2G'
+    "time": '1-0'
+
+create_pon:
+    "jobname": 'create_pon'
+    "memory": '5G'
+    "time": '0-2'
+
+call_variants:
+    "jobname": 'call_variants'
+    "memory": '4G'
+    "time": '0-5'
+
+filter_variants:
+    "jobname": 'filter_variants'
+    "memory": '2G'
+    "time": '0-1:30'
+
+variant_recal:
+    "jobname": 'variant_recal'
+    "memory": '5G'
+    "time": '1-0'
+
+apply_vqsr:
+    "jobname": 'apply_vqsr'
+    "memory": '5G'
+    "time": '1-0'

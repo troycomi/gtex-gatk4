@@ -1,0 +1,174 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'], id=ids)
+
+from scripts.get_samples import get_samples
+
+sample_details = get_samples(paths['sample_details'])
+
+rule sites_only:
+    input: 
+        bam=paths['recal_bam'],
+        ref=paths['ref_genome']
+
+    output:
+        paths['sites_only']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'SAMPLE=$(samtools view -H {input.bam} | '
+            'grep "^@RG" | '
+            'sed "s/.*SM:\([^\\t]*\).*/\\1/g" | '
+            'sort | uniq ) \n'
+        'if [[ $(echo $SAMPLE | wc -w) != 1 ]]; then \n'
+            'echo {input} contains more than 1 sample \n'
+            'exit 1 \n'
+        'fi \n'
+        'gatk --java-options "-Xmx{config[gatk][Mutect2_Sites_Only][memory]}" '
+            'Mutect2 '
+            '--reference {input.ref} '
+            '--input {input.bam} '
+            '--tumor $SAMPLE '
+            '--output {output} '
+            '--verbosity {config[gatk][verbosity]} '
+            '{config[gatk][Mutect2_Sites_Only][options]}'
+        
+def get_pon_samples(wildcards):
+    pon_ids = [detail.individual 
+               for detail in sample_details.values()
+               if (detail.individual != wildcards.individual and
+                    detail.center == wildcards.center)
+               ]
+    return expand(paths['sites_only'],
+                  id=pon_ids)
+
+rule pon_mutect_args:
+    input:
+        get_pon_samples
+
+    output:
+        paths['pon_list']
+
+    group: 'create_pon'
+
+    run:
+        with open(output[0], 'w') as outfile:
+            for f in input:
+                outfile.write(f)
+
+rule generate_pon:
+    input:
+        pon=paths['pon_list']
+        
+    output:
+        paths['pon']
+
+    singularity:
+        paths['container']
+
+    group: 'create_pon'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][CreateSomaticPanelOfNormals][memory]}" '
+            'CreateSomaticPanelOfNormals '
+            '-O {output} '
+            '-vcfs {input} '
+            '--verbosity {config[gatk][verbosity]} '
+
+def get_call_input(wildcards):
+    detail = sample_details[wildcards.id]
+    param = get_call_params(wildcards)
+    return {'pon': expand(paths['pon_list'],
+                            individual=detail.individual,
+                            center=detail.center),
+            'test': expand(paths['sites_only'], id=wildcards.id),
+            'normal': expand(paths['sites_only'], id=param['normal'])}
+
+def get_call_params(wildcards):
+    '''
+    return test and normal sample names from ids
+    strip ending d for nwgc samples
+    '''
+    test_details = sample_details[wildcards.id]
+    normal_details = next((detail for detail in sample_details.values()
+                           if detail.individual == test_details.individual and
+                              detail.center == test_details.center and
+                              detail.sample != test_details.sample), None)
+    if normal_details is None:
+        raise ValueError("No matching normal sample found for sample " + 
+                         wildcards.id)
+
+    test = test_details.sample
+    if test_details.center == 'nwgc':
+        test = test.rstrip('d')
+    normal = normal_details.sample
+    if normal_details.center == 'nwgc':
+        normal = normal.rstrip('d')
+
+    return {'test': test, 'normal': normal}
+
+rule call_variants:
+    input:
+        unpack(get_call_input)
+
+    output:
+        vcf=paths['unfiltered_vcf'],
+        bam=paths['mutect_bam']
+
+    params:
+        unpack(get_call_params)
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][Mutect2_Calls][memory]}" '
+            'Mutect2 '
+            '--reference {paths[ref_genome]} '
+            '--input {input.test} '
+            '--tumor {params.test} '
+            '--input {input.normal} '
+            '--normal {params.normal} '
+            '--pon {input.pon} '
+            '--output {output.vcf} '
+            '-bamout {output.bam} '
+            '--germline-resource {paths[germline_resource]} '
+            '--intervals {paths[exome_intervals]} '
+            '--verbosity {config[gatk][verbosity]} '
+            'config[gatk][Mutect2_Calls][options] '
+
+rule filter_variants:
+    input:
+        bed=paths['filter_input'],
+        vcf=paths['unfiltered_vcf']
+
+    output:
+        pileup=paths['pileup'],
+        con_tab=paths['con_tab'],
+        vcf=paths['filter_vcf']
+
+    singularity:
+        paths['container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
+            'GetPileupSummaries '
+            '--input {input.bed} '
+            '--output {output.pileup} '
+            '--variants paths[common_snps] '
+            '--intervals paths[exome_intervals] '
+            '--verbosity {config[gatk][verbosity]} '
+            '{config[gatk][Mutect2_Filter][options] \n'
+        'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
+            'CalculateContamination '
+            '--input {output.pileup} '
+            '--output {output.con_tab} '
+            '--verbosity {config[gatk][verbosity]} \n'
+        'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
+            'FilterMutectCalls '
+            '--variant {input.vcf} '
+            '--contamination-table {output.con_tab} '
+            '--output {output.vcf} '
+            '--verbosity {config[gatk][verbosity]} \n'
+

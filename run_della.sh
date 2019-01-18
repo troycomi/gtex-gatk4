@@ -14,3 +14,6 @@ snakemake --cluster-config 'della_cluster.yaml' \
     --resources fastq_instances=5
     #--dag | dot -Tsvg > dag.svg
     #--verbose \
+
+# remove all temp files, sometimes if interrupted doesn't get cleaned
+#snakemake --delete-temp
