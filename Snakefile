@@ -1,4 +1,5 @@
 from scripts.clean_config import clean_config_paths
+from scripts.get_samples import get_samples
 
 configfile: 'subworkflows/config.yaml'
 
@@ -6,7 +7,10 @@ paths = config['path']
 paths = clean_config_paths(paths)
 
 ids = glob_wildcards(paths['recal_bam'].replace('{id}', '{id,[^_]+}')).id
-ids = ['P7-A10']
+
+# remove ids not found in sample details
+sample_details = get_samples(paths['sample_details'])
+ids = [id for id in ids if id in sample_details]
 
 subworkflows = config['main']['subworkflows']
 if subworkflows is None:

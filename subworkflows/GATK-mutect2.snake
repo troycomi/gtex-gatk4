@@ -1,10 +1,6 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'], id=ids)
 
-from scripts.get_samples import get_samples
-
-sample_details = get_samples(paths['sample_details'])
-
 rule sites_only:
     input: 
         bam=paths['recal_bam'],
