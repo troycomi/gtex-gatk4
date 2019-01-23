@@ -45,8 +45,8 @@ sites_only:
 
 create_pon:
     "jobname": 'create_pon'
-    "memory": '5G'
-    "time": '0-2'
+    "memory": '1G'
+    "time": '0-0:10'
 
 call_variants:
     "jobname": 'call_variants'

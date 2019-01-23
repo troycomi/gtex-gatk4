@@ -24,5 +24,5 @@ find "$1" -type f -print0 | \
         #append seff
         echo $FILE 
         seff $JOB 
-        echo -e '\n' 
+        echo ''
     done

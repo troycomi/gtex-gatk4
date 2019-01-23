@@ -4,6 +4,10 @@ class sample_details():
         self.individual = individual
         self.center = center
 
+    def __str__(self):
+        return (f"donor:{self.individual} sample:{self.sample} "
+                f"center:{self.center}")
+
 
 def get_samples(detail_file):
     '''
