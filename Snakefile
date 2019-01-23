@@ -6,6 +6,7 @@ paths = config['path']
 paths = clean_config_paths(paths)
 
 ids = glob_wildcards(paths['recal_bam'].replace('{id}', '{id,[^_]+}')).id
+ids = ['P7-A10']
 
 subworkflows = config['main']['subworkflows']
 if subworkflows is None:

@@ -121,8 +121,7 @@ rule call_variants:
         bam=paths['mutect_bam']
 
     params:
-        test = lambda wildcards: get_call_params(wildcards)['test'],
-        normal = lambda wildcards: get_call_params(wildcards)['normal']
+        get_call_params
 
     singularity:
         paths['container']
@@ -132,9 +131,9 @@ rule call_variants:
             'Mutect2 '
             '--reference {paths[ref_genome]} '
             '--input {input.test} '
-            '--tumor {params.test} '
+            '--tumor {params[0][test]} '
             '--input {input.normal} '
-            '--normal {params.normal} '
+            '--normal {params[0][normal]} '
             '--pon {input.pon} '
             '--output {output.vcf} '
             '-bamout {output.bam} '
