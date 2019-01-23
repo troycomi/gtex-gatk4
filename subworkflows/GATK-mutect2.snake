@@ -22,7 +22,7 @@ rule sites_only:
             'sed "s/.*SM:\([^\\t]*\).*/\\1/g" | '
             'sort | uniq ) \n'
         'if [[ $(echo $SAMPLE | wc -w) != 1 ]]; then \n'
-            'echo {input} contains more than 1 sample \n'
+            'echo {input.bam} contains more than 1 sample \n'
             'exit 1 \n'
         'fi \n'
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Sites_Only][memory]}" '
@@ -35,7 +35,7 @@ rule sites_only:
             '{config[gatk][Mutect2_Sites_Only][options]}'
         
 def get_pon_samples(wildcards):
-    pon_ids = [detail.individual 
+    pon_ids = [detail.sample 
                for detail in sample_details.values()
                if (detail.individual != wildcards.individual and
                     detail.center == wildcards.center)
@@ -79,11 +79,13 @@ rule generate_pon:
 def get_call_input(wildcards):
     detail = sample_details[wildcards.id]
     param = get_call_params(wildcards)
-    return {'pon': expand(paths['pon_list'],
+    result = {'pon': expand(paths['pon_list'],
                             individual=detail.individual,
                             center=detail.center),
             'test': expand(paths['sites_only'], id=wildcards.id),
             'normal': expand(paths['sites_only'], id=param['normal'])}
+
+    return result
 
 def get_call_params(wildcards):
     '''
@@ -106,7 +108,9 @@ def get_call_params(wildcards):
     if normal_details.center == 'nwgc':
         normal = normal.rstrip('d')
 
-    return {'test': test, 'normal': normal}
+    result = {'test': test, 'normal': normal}
+
+    return result
 
 rule call_variants:
     input:
@@ -117,7 +121,8 @@ rule call_variants:
         bam=paths['mutect_bam']
 
     params:
-        unpack(get_call_params)
+        test = lambda wildcards: get_call_params(wildcards)['test'],
+        normal = lambda wildcards: get_call_params(wildcards)['normal']
 
     singularity:
         paths['container']
@@ -136,7 +141,7 @@ rule call_variants:
             '--germline-resource {paths[germline_resource]} '
             '--intervals {paths[exome_intervals]} '
             '--verbosity {config[gatk][verbosity]} '
-            'config[gatk][Mutect2_Calls][options] '
+            '{config[gatk][Mutect2_Calls][options]} '
 
 rule filter_variants:
     input:
@@ -159,7 +164,7 @@ rule filter_variants:
             '--variants paths[common_snps] '
             '--intervals paths[exome_intervals] '
             '--verbosity {config[gatk][verbosity]} '
-            '{config[gatk][Mutect2_Filter][options] \n'
+            '{config[gatk][Mutect2_Filter][options]} \n'
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
             'CalculateContamination '
             '--input {output.pileup} '

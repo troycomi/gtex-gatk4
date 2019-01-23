@@ -1,6 +1,6 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_vcf'],
-                                         chromosome=range(21,23))
+    subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_recal'],
+                                         chromosome=range(1,23))
 
 rule haplotype_caller:
     input:

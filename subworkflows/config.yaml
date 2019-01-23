@@ -1,20 +1,20 @@
 ---
 main:
     subworkflows:
-        - "GATK-map"
-        - "GATK-bqsr"
-        - "GATK-genotype"
         - "GATK-mutect2"
-        - "alignstats"
+        #- "GATK-map"
+        #- "GATK-bqsr"
+        #- "GATK-genotype"
+        #- "alignstats"
 
 path:
     container: "docker://broadinstitute/gatk"
     # working directory of Snakefile
-    base: "/home/tcomi/projects/gtex-gatk4"
+    base: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/Scripts/gtex-gatk4/subworkflows"
     temp_dir: "/scratch"
 
     # directory to hold all output data
-    data_root: "/tigress/tcomi/gatk4devel"
+    data_root: "/tigress/AKEY/akey_vol2/GTExSomaticMutations"
 
     ### MAPPING ###
     fastq_input: "__DATA_ROOT__/original_fastq"
@@ -35,9 +35,9 @@ path:
     dedup_metric: "__MAPPING_BASE__/dedup_bam/{id}.dupmetrics.txt"
 
     ### BQSR ###
-    recal_bam: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.bam"
-    recal_table: "__DATA_ROOT__/bqsr_recal/{id}.{type}_bqsr.table"
-    recal_covariates: "__DATA_ROOT__/bqsr_recal/{id}.bqsr.pdf"
+    recal_bam: "__DATA_ROOT__/MapFastqs.nobackup/{id}.bqsr.bam"
+    recal_table: "__DATA_ROOT__/MapFastqs.nobackup/{id}.{type}_bqsr.table"
+    recal_covariates: "__DATA_ROOT__/MapFastqs.nobackup/{id}.bqsr.pdf"
 
     ### GENOTYPE ###
     # supplemental files for haplotype calling
@@ -68,20 +68,20 @@ path:
 
     ### MUTECT2 ###
     sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/SampInfo/sample_details.txt"
-    sites_only: "__DATA_ROOT__/mutect2/sites-only/{id}.vcf.gz"
-    pon_list: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.args"
-    pon: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.gz"
+    sites_only: "__DATA_ROOT__/mutect2.nobackup/sites-only/{id}.vcf.gz"
+    pon_list: "__DATA_ROOT__/mutect2.nobackup/pon/{individual}.{center}.vcf.args"
+    pon: "__DATA_ROOT__/mutect2.nobackup/pon/{individual}.{center}.vcf.gz"
 
-    unfiltered_vcf: "__DATA_ROOT__/mutect2/calls/{id}.vcf.gz"
-    mutect_bam: "__DATA_ROOT__/mutect2/calls/{id}.bam"
+    unfiltered_vcf: "__DATA_ROOT__/mutect2.nobackup/calls/{id}.vcf.gz"
+    mutect_bam: "__DATA_ROOT__/mutect2.nobackup/calls/{id}.bam"
     germline_resource: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_Mutect2_reference_bundle/af-only-gnomad.raw.sites.b37.vcf.gz"
-    exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/PrimaryTarget/Unpadded/IntFormat/primary_target_regions_allchr_XY.bed"
+    exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Design_Annotation_files/SureSelect_Human_All_Exon_V5/S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
 
-    filter_input: "__RECAL_BAM__"
+    filter_input: "__MUTECT_BAM__"
     common_snps: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/GATK_Mutect2_reference_bundle/small_exac_common_3_b37.vcf.gz"
-    pileup: "__DATA_ROOT__/mutect2/filtered/{id}_pileup.table"
-    con_tab: "__DATA_ROOT__/mutect2/filtered/{id}_contamination.table"
-    filter_vcf: "__DATA_ROOT__/mutect2/filtered/{id}_filtered.vcf.gz"
+    pileup: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_pileup.table"
+    con_tab: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_contamination.table"
+    filter_vcf: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_filtered.vcf.gz"
 
     ### ALIGNSTATS ###
     # exe location
@@ -94,7 +94,7 @@ path:
                         IntFormat/primary_target_regions_allchr_XY.bed"
 
     # Reference with index files
-    ref_genome: "/scratch/gpfs/tcomi/temp/hs37d5.fa"
+    ref_genome: "/scratch/gpfs/smv/temp/hs37d5.fa"
 
 gatk:
     verbosity: "ERROR"

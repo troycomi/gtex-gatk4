@@ -5,7 +5,7 @@ configfile: 'subworkflows/config.yaml'
 paths = config['path']
 paths = clean_config_paths(paths)
 
-ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
+ids = glob_wildcards(paths['recal_bam'].replace('{id}', '{id,[^_]+}')).id
 
 subworkflows = config['main']['subworkflows']
 if subworkflows is None:
