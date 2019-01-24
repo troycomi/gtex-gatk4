@@ -170,7 +170,7 @@ gatk:
         memory: "3G"
         options: >
             --af-of-alleles-not-in-resource 0.0000025
-            --disable-read-filter MateOnSameConticOrNoMappedMateReadFilter
+            --disable-read-filter MateOnSameContigOrNoMappedMateReadFilter
             --interval-padding 100
 
     Mutect2_Filter:
