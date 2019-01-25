@@ -12,7 +12,7 @@ if [ "$#" -ne 1 ] || [ -z "$1" ] || [ ! -d $1 ]; then
     echo "Usage: $0 DIRECTORY"
 fi
 
-find "$1" -type f -print0 | \
+find "$1" -type f -print0 | sort -z | \
     while IFS= read -r -d '' FILE; do
         JOB=$(basename $FILE)
         JOB=${JOB##*_}
@@ -22,7 +22,7 @@ find "$1" -type f -print0 | \
             && echo -e "$JOB is still running" && continue 
 
         #append seff
-        echo $FILE 
+        echo $(basename $FILE)
         seff $JOB 
         echo ''
     done

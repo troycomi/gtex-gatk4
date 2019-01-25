@@ -1,5 +1,9 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'], id=ids)
+    subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
+
+localrules:
+    pon_mutect_args
 
 rule sites_only:
     input: 
@@ -10,7 +14,7 @@ rule sites_only:
         paths['sites_only']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
         'SAMPLE=$(samtools view -H {input.bam} | '
@@ -51,7 +55,7 @@ rule pon_mutect_args:
     run:
         with open(output[0], 'w') as outfile:
             for f in input:
-                outfile.write(f)
+                outfile.write(f + "\n")
 
 rule generate_pon:
     input:
@@ -61,7 +65,7 @@ rule generate_pon:
         paths['pon']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     group: 'create_pon'
 
@@ -75,11 +79,11 @@ rule generate_pon:
 def get_call_input(wildcards):
     detail = sample_details[wildcards.id]
     param = get_call_params(wildcards)
-    result = {'pon': expand(paths['pon_list'],
+    result = {'pon': expand(paths['pon'],
                             individual=detail.individual,
                             center=detail.center),
-            'test': expand(paths['sites_only'], id=wildcards.id),
-            'normal': expand(paths['sites_only'], id=param['normal'])}
+            'test': expand(paths['recal_bam'], id=wildcards.id),
+            'normal': expand(paths['recal_bam'], id=param['normal'])}
 
     return result
 
@@ -120,7 +124,7 @@ rule call_variants:
         get_call_params
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Calls][memory]}" '
@@ -140,7 +144,7 @@ rule call_variants:
 
 rule filter_variants:
     input:
-        bed=paths['filter_input'],
+        bam=paths['filter_input'],
         vcf=paths['unfiltered_vcf']
 
     output:
@@ -149,15 +153,17 @@ rule filter_variants:
         vcf=paths['filter_vcf']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
+
+    group: 'filter_variants'
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
             'GetPileupSummaries '
-            '--input {input.bed} '
+            '--input {input.bam} '
             '--output {output.pileup} '
-            '--variants paths[common_snps] '
-            '--intervals paths[exome_intervals] '
+            '--variant {paths[common_snps]} '
+            '--intervals {paths[exome_intervals]} '
             '--verbosity {config[gatk][verbosity]} '
             '{config[gatk][Mutect2_Filter][options]} \n'
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
@@ -170,5 +176,15 @@ rule filter_variants:
             '--variant {input.vcf} '
             '--contamination-table {output.con_tab} '
             '--output {output.vcf} '
+            '--stats /dev/null '
             '--verbosity {config[gatk][verbosity]} \n'
 
+rule group_filter:
+    input:
+        expand(paths['filter_vcf'],
+                id=ids)
+
+    output:
+        touch(temp(paths['filter_vcf_temp']))
+
+    group: 'filter_variants'

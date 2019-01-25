@@ -9,11 +9,11 @@ snakemake --cluster-config 'della_cluster.yaml' \
     --cluster "sbatch --cpus-per-task={cluster.n} \
                 --mem={cluster.memory} --time={cluster.time} \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
-                --parsable" \
+                --parsable -A eeb" \
     --use-singularity -rp -w 60 -j 50 \
     --resources fastq_instances=5 \
     --max-jobs-per-second 1 \
-    --restart-times 1
+    #--restart-times 1
     #--dag | dot -Tsvg > dag.svg
     #--verbose \
 

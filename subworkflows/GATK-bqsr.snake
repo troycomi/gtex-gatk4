@@ -18,7 +18,7 @@ rule bqsr_table:
         paths['recal_table']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     group: 'bqsr'
 
@@ -45,7 +45,7 @@ rule bqsr_bam:
         bam=protected(paths['recal_bam'])
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     group: 'bqsr'
 
@@ -70,7 +70,7 @@ rule analyze_bqsr:
         paths['recal_covariates']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     group: 'bqsr'
 

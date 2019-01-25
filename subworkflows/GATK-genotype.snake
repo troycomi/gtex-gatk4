@@ -8,11 +8,11 @@ rule haplotype_caller:
         interval=paths['haplotype_intervals']
 
     output:
-        paths['haplotype_raw'],
-        paths['haplotype_idx']
+        vcf=paths['haplotype_raw'],
+        idx=paths['haplotype_idx']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     group: 'haplotype'
 
@@ -23,7 +23,7 @@ rule haplotype_caller:
             '-R {paths[ref_genome]} '
             '-I {input.bam} '
             '-L {input.interval} '
-            '-O {output} '
+            '-O {output.vcf} '
             '{config[gatk][HaplotypeCaller][options]}'
 
 rule name_map:
@@ -70,7 +70,7 @@ rule db_import:
         temp(directory(paths['genomics_db']))
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][GenomicsDBImport][memory]}" '
@@ -91,7 +91,7 @@ rule genotype_gvcf:
         tbi=paths['genotype_tbi']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][GenotypeGVCFs][memory]}" '
@@ -124,7 +124,7 @@ rule variant_recal:
         get_variant_options
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][VariantRecalibrator][memory]}" '
@@ -147,11 +147,11 @@ rule apply_recal:
         paths['vqsr_vcf']
 
     singularity:
-        paths['container']
+        paths['gatk-container']
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][ApplyRecalibration][memory]}" '
-            'ApplyRecalibration '
+        'gatk --java-options "-Xmx{config[gatk][ApplyVQSR][memory]}" '
+            'ApplyVQSR '
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '
             '--tranches-file {input.tranche} '

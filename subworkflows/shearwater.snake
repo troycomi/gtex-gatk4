@@ -1,0 +1,23 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['shearwater'] = expand(paths['shearwater_vcf'], 
+                                             chromosome=range(22,23))
+
+rule shearwater:
+    input: 
+        bams=expand(paths['shearwater_input'],
+                    id=ids),
+        region=paths['shearwater_region']
+
+    output:
+        vcf=paths['shearwater_vcf']
+
+    singularity:
+        paths['bioconductor-container']
+
+    shell:
+        'Rscript {paths[base]}/scripts/shearwater.R '
+            '$(dirname {input.bams[0]}) '  # dir with bams
+            '{input.region} '
+            '{threads} '
+            '{output.vcf} '
+            #TODO: direct output to null
