@@ -8,6 +8,9 @@ rule alignstats:
     output:
         paths['alignstats_output']
 
+    resources:
+        short_jobs=1
+
     shell:
         'module load samtools \n'
         '{paths[alignstats]} '

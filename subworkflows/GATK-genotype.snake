@@ -1,6 +1,21 @@
+import os
+from scripts.split_bed import count_chunks
+
+chroms = list(range(1,23))
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_recal'],
-                                         chromosome=range(1,23))
+    recal = expand(paths['vqsr_recal'], chromosome=chroms)
+    if all([os.path.exists(f) for f in recal]):
+        subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_vcf'],
+                                                    chromosome=chroms)
+    else:
+        subw_outputs_dict['GATK-genotype'] = recal
+
+# determine number of chunks for each chromosome
+chunks = {}
+for chrom in chroms:
+    chunks[str(chrom)] = count_chunks(paths['haplotype_intervals']\
+                                    .format(chromosome=chrom),
+                                 config['gatk']['GenotypeGVCFs']['chunk_size'])
 
 rule haplotype_caller:
     input:
@@ -81,17 +96,36 @@ rule db_import:
             '--genomicsdb-workspace-path {output} '
             '{config[gatk][GenomicsDBImport][options]} '
 
+rule split_chunk:
+    input:
+        region=paths['haplotype_intervals']
+
+    output:
+        temp(paths['genotype_chunk'])
+
+    group: 'genotype_gvcf'
+
+    shell:
+        'python {paths[base]}/scripts/split_bed.py '
+            '{input.region} '
+            '{config[gatk][GenotypeGVCFs][chunk_size]} '
+            '{wildcards.chunk} '
+            '> {output} '
+
+
 rule genotype_gvcf:
     input:
         db=paths['genomics_db'],
-        intervals=paths['haplotype_intervals']
+        intervals=paths['genotype_chunk']
 
     output:
-        vcf=paths['genotype_gvcf'],
-        tbi=paths['genotype_tbi']
+        vcf=temp(paths['genotype_gvcf_chunk']),
+        tbi=temp(paths['genotype_tbi_chunk'])
 
     singularity:
         paths['gatk-container']
+
+    group: 'genotype_gvcf'
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][GenotypeGVCFs][memory]}" '
@@ -102,7 +136,50 @@ rule genotype_gvcf:
             '--variant gendb://{input.db} '
             '-O {output.vcf} '
             '{config[gatk][GenotypeGVCFs][options]} '
-            '2 > /dev/null'
+            '2>/dev/null'
+
+def get_chromosome_chunks(wildcards):
+    return {"gvcfs": expand(paths['genotype_gvcf_chunk'],
+                            chromosome=wildcards.chromosome,
+                            chunk=range(chunks[wildcards.chromosome])),
+            "idxs": expand(paths['genotype_tbi_chunk'],
+                            chromosome=wildcards.chromosome,
+                            chunk=range(chunks[wildcards.chromosome]))}
+
+rule vcf_list:
+    input:
+        unpack(get_chromosome_chunks),
+
+    output:
+        vcfList=temp(paths['genotype_list'])
+
+    group: 'merge_genotype_gvcf'
+
+    run:
+        with open(output[0], 'w') as writer:
+            for f in input.gvcfs:
+                writer.write(f + "\n")
+    
+rule merge_genotype_gvcf:
+    input:
+        unpack(get_chromosome_chunks),
+        vcfList=paths['genotype_list']
+
+    output:
+        vcf=paths['genotype_gvcf'],
+        tbi=paths['genotype_tbi']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'merge_genotype_gvcf'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MergeVcfs][memory]}" '
+            'MergeVcfs '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--INPUT {input.vcfList} '
+            '--OUTPUT {output.vcf} '
 
 def get_variant_options(wildcards):
     return config['gatk']['VariantRecalibrator']['options'].format(
@@ -132,7 +209,7 @@ rule variant_recal:
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '
             '-V {input.vcf} '
-            '--recal-file {output.recal} '
+            '--output {output.recal} '
             '--tranches-file {output.tranche} '
             '{params}'
 
@@ -156,5 +233,6 @@ rule apply_recal:
             '-R {input.ref} '
             '--tranches-file {input.tranche} '
             '--recal-file {input.recal} '
+            '-V {input.vcf} '
             '-O {output.vcf} '
             '{config[gatk][ApplyVQSR][options]}'

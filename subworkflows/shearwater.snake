@@ -1,12 +1,43 @@
+from scripts.split_bed.py import count_chunks
+
+# read in region file to determine number of chunks
+chunks = count_chunks(paths['shearwater_region'],
+                      config['shearwater']['chunk_size'])
+
+num_chunks = 20  # chunks
+
+# group jobs into batch size for jobs
+batch_size = config['shearwater']['batch_size']
+outfiles = expand(paths['shearwater_vcf'],
+                  chunk=range(num_chunks))
+outfiles = [outfiles[i:i+batch_size]
+            for i in range(0, len(outfiles), batch_size)]
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['shearwater'] = expand(paths['shearwater_vcf'], 
-                                             chromosome=range(22,23))
+    subw_outputs_dict['shearwater'].append(paths['shearwater_combined_vcf'])
+
+
+rule shearwater_region:
+    input:
+        region=paths['shearwater_region']
+
+    output:
+        temp(paths['shearwater_chunk'])
+
+    group: 'shearwater'
+
+    shell:
+        'python {paths[base]}/scripts/split_bed.py '
+            '{input.region} '
+            '{config[shearwater][chunk_size]} '
+            '{wildcards.chunk} '
+            '> {output} '
 
 rule shearwater:
     input: 
         bams=expand(paths['shearwater_input'],
                     id=ids),
-        region=paths['shearwater_region']
+        region=paths['shearwater_chunk']
 
     output:
         vcf=paths['shearwater_vcf']
@@ -14,10 +45,37 @@ rule shearwater:
     singularity:
         paths['bioconductor-container']
 
+    threads:
+        config['shearwater']['threads']
+
+    group: 'shearwater'
+
     shell:
         'Rscript {paths[base]}/scripts/shearwater.R '
             '$(dirname {input.bams[0]}) '  # dir with bams
             '{input.region} '
             '{threads} '
             '{output.vcf} '
-            #TODO: direct output to null
+
+for i, files in enumerate(outfiles):
+    rule:
+        input: files
+        output: temp(touch(paths['shearwater_batch'].format(id=i)))
+        group: 'shearwater'
+
+rule group_shearwater:
+    input:
+        vcfs=expand(paths['shearwater_vcf'],
+                    chunk=range(num_chunks)),
+        batch=expand(paths['shearwater_batch'],
+                     id=range(len(outfiles)))
+
+    output:
+        protected(paths['shearwater_combined_vcf'])
+
+    shell:
+        # get header from first file
+        "cat "
+            "<(cat {input.vcfs[0]} | sed -n '/^#/p') "
+            "<(cat {input.vcfs} | sed -n '/^[^#]/p') "
+        "| gzip -c > {output}"

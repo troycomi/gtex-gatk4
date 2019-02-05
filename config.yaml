@@ -2,8 +2,8 @@
 main:
     subworkflows:
         - "GATK-genotype"
-        # - "GATK-mutect2"
         # - "shearwater"
+        # - "GATK-mutect2"
         # - "GATK-map"
         # - "GATK-bqsr"
         # - "alignstats"
@@ -61,8 +61,15 @@ path:
     haplotype_idx: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
                        {id}.raw_variants.g.vcf.idx"
     genomics_db: "__DATA_ROOT__/genotype/DB/chr{chromosome}"
+    genotype_chunk: "__DATA_ROOT__/genotype/genotype/chunk/\
+                          chr{chromosome}_chunk{chunk}.bed"
+    genotype_gvcf_chunk: "__DATA_ROOT__/genotype/genotype/chunk/\
+                          chr{chromosome}_chunk{chunk}.vcf.gz"
+    genotype_tbi_chunk: "__DATA_ROOT__/genotype/genotype/chunk/\
+                         chr{chromosome}_chunk{chunk}.vcf.gz.tbi"
+    genotype_list: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.list"
     genotype_gvcf: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.vcf.gz"
-    genotype_tbi: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.vcf.tbi"
+    genotype_tbi: "__DATA_ROOT__/genotype/genotype/chr{chromosome}.vcf.gz.tbi"
 
     reference_bundle: "/tigress/AKEY/akey_vol1/home/selinav/\
                        References.nobackup/GATK_reference_bundle_b37"
@@ -114,8 +121,17 @@ path:
                  References.nobackup/hs37d5.fa"
 
     shearwater_input: "__RECAL_BAM__"
-    shearwater_region: "__HAPLOTYPE_INTERVALS__"
-    shearwater_vcf: "__DATA_ROOT__/shearwater/{chromosome}.vcf.gz"
+    # this is split in code
+    shearwater_region: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                          Design_Annotation_files/\
+                          SureSelect_Human_All_Exon_V5/\
+                          S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
+    shearwater_chunk: "__DATA_ROOT__/shearwater/{chunk}.chunk"
+    shearwater_vcf: "__DATA_ROOT__/shearwater/chunk_{chunk}.vcf"
+    # temp file for batched execution
+    shearwater_batch: "__DATA_ROOT__/shearwater/{id}.temp"
+    shearwater_list: "__DATA_ROOT__/shearwater/shearwater.list"
+    shearwater_combined_vcf: "__DATA_ROOT__/shearwater/shearwater.vcf.gz"
 
 gatk:
     verbosity: "ERROR"
@@ -172,7 +188,7 @@ gatk:
 
     HaplotypeCaller:
         memory: "2G"
-        options: >
+        options: >-
             --interval-padding 150
             --emit-ref-confidence BP_RESOLUTION
 
@@ -182,10 +198,14 @@ gatk:
             --batch-size 50
 
     GenotypeGVCFs:
+        chunk_size: 500000
         memory: "4G"
-        options: >
+        options: >-
             --use-new-qual-calculator
             --interval-padding 100
+
+    MergeVcfs:
+        memory: "1G"
 
     Mutect2_Sites_Only:
         memory: "1G"
@@ -208,7 +228,7 @@ gatk:
             --interval-padding 100
 
     VariantRecalibrator:
-        memory: "4G"
+        memory: "2G"
         options:
             "-tranche 100.0
             -tranche 99.9
@@ -218,7 +238,6 @@ gatk:
             -tranche 98.0
             -tranche 97.5
             -tranche 97.0
-            -nt 4
             -mode SNP
             -an QD
             -an MQ
@@ -236,12 +255,23 @@ gatk:
             truth=false,prior=2.0:{dbsnp}"
 
     ApplyVQSR:
-        memory: "4G"
+        memory: "2G"
         options: >
             -mode SNP
-            --ts_filter_level 99.0
+            --ts-filter-level 99.0
 
 alignstats:
     options: >
         -p
         -P 2
+
+shearwater:
+    # this is the maximum allowed by snakemake, will scale down
+    # to match the config or called option
+    threads: 2
+    # number of basepairs to read in at a time
+    # 20 kbp runs in ~10 minutes, consuming 5 GB
+    chunk_size: 20000
+    # number of batches to put in a slurm job
+    # cuts number of jobs and increases runtime above 2 hour limit
+    batch_size: 50

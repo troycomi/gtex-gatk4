@@ -11,7 +11,7 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
                 --parsable -A eeb" \
     --use-singularity -rp -w 60 -j 50 \
-    --resources fastq_instances=5 \
+    --resources fastq_instances=5 short_jobs=2\
     --max-jobs-per-second 1 \
     #--restart-times 1
     #--dag | dot -Tsvg > dag.svg

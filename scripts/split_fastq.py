@@ -1,6 +1,5 @@
 import sys
 import os
-import io
 from glob import glob
 
 
