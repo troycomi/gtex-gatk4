@@ -1,7 +1,8 @@
 ---
 main:
     subworkflows:
-        - "GATK-genotype"
+        - "GATK-map-metrics"
+        # - "GATK-genotype"
         # - "shearwater"
         # - "GATK-mutect2"
         # - "GATK-map"
@@ -10,6 +11,7 @@ main:
 
 path:
     gatk-container: "docker://broadinstitute/gatk"
+    gatk3-container: "docker://broadinstitute/gatk3:3.8-1"
     bioconductor-container: "docker://quay.io/\
                              biocontainers/bioconductor-deepsnv:\
                              1.28.0--r351hf484d3e_0"
@@ -36,6 +38,15 @@ path:
     dedup_bam: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam"
     dedup_bai: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam.bai"
     dedup_metric: "__MAPPING_BASE__/dedup_bam/{id}.dupmetrics.txt"
+
+    # # # MAPPING METRICS # # #
+    metric_bam: "__RECAL_BAM__"
+    metric_dir: "__DATA_ROOT__/map-metrics.nobackup"
+    metric_group: "__METRIC_DIR__/group.temp"
+    metric_complexity: "__METRIC_DIR__/{id}_complexity.txt"
+    metric_pileup: "__METRIC_DIR__/{id}_pileup.table"
+    metric_contam: "__METRIC_DIR__/{id}_contamination.table"
+    metric_depth: "__METRIC_DIR__/{id}_diagnose.vcf"
 
     # # # BQSR # # #
     recal_bam: "__DATA_ROOT__/MapFastqs.nobackup/{id}.bqsr.bam"
@@ -77,9 +88,11 @@ path:
     ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.b37.vcf"
     ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.b37.vcf"
     ref_dbsnp: "__REFERENCE_BUNDLE__/dbsnp_138.b37.vcf"
-    vqsr_recal: "__DATA_ROOT__/genotype/recal/chr{chromosome}.recal"
-    vqsr_tranche: "__DATA_ROOT__/genotype/recal/chr{chromosome}.tranches"
-    vqsr_vcf: "__DATA_ROOT__/genotype/recal/chr{chromosome}.vcf.gz"
+    chromosome_list: "__DATA_ROOT__/genotype/recal/merged.list"
+    vqsr_merged_vcf: "__DATA_ROOT__/genotype/recal/merged.vcf.gz"
+    vqsr_recal: "__DATA_ROOT__/genotype/recal/recal.recal"
+    vqsr_tranche: "__DATA_ROOT__/genotype/recal/recal.tranches"
+    vqsr_vcf: "__DATA_ROOT__/genotype/recal/recal.vcf.gz"
 
     # # # MUTECT2 # # #
     sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
@@ -259,6 +272,20 @@ gatk:
         options: >
             -mode SNP
             --ts-filter-level 99.0
+
+    EstimateLibraryComplexity:
+        memory: "2G"
+        options: "--OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500"
+
+    GetPileupSummaries:
+        memory: "2G"
+        options: "--interval-padding 100"
+
+    CalculateContamination:
+        memory: "2G"
+
+    DiagnoseTargets:
+        memory: "2G"
 
 alignstats:
     options: >

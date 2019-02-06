@@ -1,0 +1,86 @@
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-map-metrics'] = expand(paths['metric_depth'], id=ids)
+
+rule estimate_complexity:
+    input:
+        paths['metric_bam']
+
+    output:
+        paths['metric_complexity']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'map_metrics'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][EstimateLibraryComplexity][memory]}" '
+            'EstimateLibraryComplexity '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--INPUT {input} '
+            '--OUTPUT {output} '
+            '{config[gatk][EstimateLibraryComplexity][options]}'
+
+rule pileup_summaries:
+    input:
+        paths['metric_bam'],
+        paths['metric_complexity']
+
+    output:
+        temp(paths['metric_pileup'])
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'map_metrics'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][GetPileupSummaries][memory]}" '
+            'GetPileupSummaries '
+            '--verbosity {config[gatk][verbosity]} '
+            '--input {input[0]} '
+            '--output {output} '
+            '--variant {paths[common_snps]} '
+            '--intervals {paths[exome_intervals]} '
+            '{config[gatk][GetPileupSummaries][options]}'
+
+rule calc_contamination:
+    input:
+        paths['metric_pileup']
+
+    output:
+        paths['metric_contam']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'map_metrics'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][CalculateContamination][memory]}" '
+            'CalculateContamination '
+            '--verbosity {config[gatk][verbosity]} '
+            '--input {input} '
+            '--output {output} '
+
+rule diagnose_targets:
+    input:
+        paths['metric_bam'],
+        paths['metric_contam']
+
+    output:
+        paths['metric_depth']
+
+    singularity:
+        paths['gatk3-container']
+
+    group: 'map_metrics'
+
+    shell:
+        'java -Xmx{config[gatk][DiagnoseTargets][memory]} '
+            '-jar /usr/GenomeAnalysisTK.jar '
+            '-T DiagnoseTargets '
+            '-R {paths[ref_genome]} '
+            '-L {paths[exome_intervals]} '
+            '-I {input[0]} '
+            '-o {output} '

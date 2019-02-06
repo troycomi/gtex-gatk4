@@ -42,8 +42,8 @@ genotype_gvcf:
 
 merge_genotype_gvcf:
     jobname: 'merge_gvcf'
-    memory: '1G'
-    time: '0-0:10'
+    memory: '2G'
+    time: '0-0:30'
 
 sites_only:
     jobname: 'sites_only'
@@ -70,12 +70,17 @@ filter_variants:
 variant_recal:
     jobname: 'variant_recal'
     memory: '2G'
-    time: '0-0:10'
+    time: '0-2:00'
 
 apply_vqsr:
     jobname: 'apply_vqsr'
     memory: '2G'
     time: '0-1'
+
+map_metrics:
+    jobname: 'map_metrics'
+    memory: '2G'
+    time: '0-2'
 
 shearwater:
     jobname: 'shearwater'

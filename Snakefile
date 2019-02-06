@@ -13,7 +13,7 @@ ids = glob_wildcards(paths['recal_bam'].replace('{id}', '{id,[^_]+}')).id
 # remove ids not found in sample details
 sample_details = get_samples(paths['sample_details'])
 ids = [id for id in ids if id in sample_details]
-# ids = ids[0:3]
+#ids = ids[0:1]
 
 subworkflows = config['main']['subworkflows']
 if subworkflows is None:

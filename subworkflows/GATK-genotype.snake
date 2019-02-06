@@ -146,7 +146,7 @@ def get_chromosome_chunks(wildcards):
                             chromosome=wildcards.chromosome,
                             chunk=range(chunks[wildcards.chromosome]))}
 
-rule vcf_list:
+rule vcf_list_chunks:
     input:
         unpack(get_chromosome_chunks),
 
@@ -160,7 +160,7 @@ rule vcf_list:
             for f in input.gvcfs:
                 writer.write(f + "\n")
     
-rule merge_genotype_gvcf:
+rule merge_chunk_gvcf:
     input:
         unpack(get_chromosome_chunks),
         vcfList=paths['genotype_list']
@@ -168,6 +168,46 @@ rule merge_genotype_gvcf:
     output:
         vcf=paths['genotype_gvcf'],
         tbi=paths['genotype_tbi']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'merge_genotype_gvcf'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MergeVcfs][memory]}" '
+            'MergeVcfs '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--INPUT {input.vcfList} '
+            '--OUTPUT {output.vcf} '
+
+def get_chromosomes(wildcards):
+    return {"gvcfs": expand(paths['genotype_gvcf'],
+                            chromosome=chroms),
+            "idxs": expand(paths['genotype_tbi'],
+                            chromosome=chroms)}
+
+rule vcf_list_chroms:
+    input:
+        unpack(get_chromosomes),
+
+    output:
+        vcfList=temp(paths['chromosome_list'])
+
+    group: 'merge_genotype_gvcf'
+
+    run:
+        with open(output[0], 'w') as writer:
+            for f in input.gvcfs:
+                writer.write(f + "\n")
+    
+rule merge_chromosome_gvcf:
+    input:
+        unpack(get_chromosomes),
+        vcfList=paths['chromosome_list']
+
+    output:
+        vcf=paths['vqsr_merged_vcf'],
 
     singularity:
         paths['gatk-container']
@@ -191,11 +231,11 @@ def get_variant_options(wildcards):
 rule variant_recal:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['genotype_gvcf']
+        vcf=paths['vqsr_merged_vcf'],
 
     output:
         recal=paths['vqsr_recal'],
-        tranche=paths['vqsr_vcf'],
+        tranche=paths['vqsr_tranche'],
 
     params:
         get_variant_options
@@ -213,12 +253,12 @@ rule variant_recal:
             '--tranches-file {output.tranche} '
             '{params}'
 
-rule apply_recal:
+rule apply_vqsr:
     input:
         ref=paths['ref_genome'],
         vcf=paths['genotype_gvcf'],
         recal=paths['vqsr_recal'],
-        tranche=paths['vqsr_vcf'],
+        tranche=paths['vqsr_tranche'],
 
     output:
         paths['vqsr_vcf']
