@@ -1,8 +1,8 @@
 ---
 main:
     subworkflows:
-        - "GATK-map-metrics"
-        # - "GATK-genotype"
+        - "GATK-genotype"
+        # - "GATK-map-metrics"
         # - "shearwater"
         # - "GATK-mutect2"
         # - "GATK-map"
@@ -93,6 +93,7 @@ path:
     vqsr_recal: "__DATA_ROOT__/genotype/recal/recal.recal"
     vqsr_tranche: "__DATA_ROOT__/genotype/recal/recal.tranches"
     vqsr_vcf: "__DATA_ROOT__/genotype/recal/recal.vcf.gz"
+    vqsr_script: "__DATA_ROOT__/genotype/recal/recal.plots.R"
 
     # # # MUTECT2 # # #
     sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\

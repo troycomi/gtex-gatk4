@@ -74,8 +74,8 @@ rule group_shearwater:
         protected(paths['shearwater_combined_vcf'])
 
     shell:
-        # get header from first file
+        # get header from first file, change fileformat in first two lines
         "cat "
-            "<(cat {input.vcfs[0]} | sed -n '/^#/p') "
+            "<(cat {input.vcfs[0]} | sed -n -e '1d; 2c##fileformat=VCFv4.1' -e '/^#/p') "
             "<(cat {input.vcfs} | sed -n '/^[^#]/p') "
         "| gzip -c > {output}"

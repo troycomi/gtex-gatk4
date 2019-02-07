@@ -3,10 +3,9 @@ from scripts.split_bed import count_chunks
 
 chroms = list(range(1,23))
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    recal = expand(paths['vqsr_recal'], chromosome=chroms)
+    recal = [paths['vqsr_script']]
     if all([os.path.exists(f) for f in recal]):
-        subw_outputs_dict['GATK-genotype'] = expand(paths['vqsr_vcf'],
-                                                    chromosome=chroms)
+        subw_outputs_dict['GATK-genotype'] = [paths['vqsr_vcf']]
     else:
         subw_outputs_dict['GATK-genotype'] = recal
 
@@ -236,6 +235,7 @@ rule variant_recal:
     output:
         recal=paths['vqsr_recal'],
         tranche=paths['vqsr_tranche'],
+        rscript=paths['vqsr_script']
 
     params:
         get_variant_options
@@ -251,12 +251,13 @@ rule variant_recal:
             '-V {input.vcf} '
             '--output {output.recal} '
             '--tranches-file {output.tranche} '
+            '--rscript-file {output.rscript} '
             '{params}'
 
 rule apply_vqsr:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['genotype_gvcf'],
+        vcf=paths['vqsr_merged_vcf'],
         recal=paths['vqsr_recal'],
         tranche=paths['vqsr_tranche'],
 
