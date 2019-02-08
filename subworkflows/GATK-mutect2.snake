@@ -121,7 +121,7 @@ rule call_variants:
         bam=paths['mutect_bam']
 
     params:
-        get_call_params
+        names=get_call_params
 
     singularity:
         paths['gatk-container']
@@ -131,9 +131,9 @@ rule call_variants:
             'Mutect2 '
             '--reference {paths[ref_genome]} '
             '--input {input.test} '
-            '--tumor {params[0][test]} '
+            '--tumor {params.name[test]} '
             '--input {input.normal} '
-            '--normal {params[0][normal]} '
+            '--normal {params.name[normal]} '
             '--pon {input.pon} '
             '--output {output.vcf} '
             '-bamout {output.bam} '

@@ -1,4 +1,4 @@
-from scripts.split_bed.py import count_chunks
+from scripts.split_bed import count_chunks
 
 # read in region file to determine number of chunks
 chunks = count_chunks(paths['shearwater_region'],
@@ -16,6 +16,8 @@ outfiles = [outfiles[i:i+batch_size]
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['shearwater'].append(paths['shearwater_combined_vcf'])
 
+localrules:
+    group_shearwater 
 
 rule shearwater_region:
     input:
@@ -75,7 +77,5 @@ rule group_shearwater:
 
     shell:
         # get header from first file, change fileformat in first two lines
-        "cat "
-            "<(cat {input.vcfs[0]} | sed -n -e '1d; 2c##fileformat=VCFv4.1' -e '/^#/p') "
-            "<(cat {input.vcfs} | sed -n '/^[^#]/p') "
+        " sed -f {paths[base]}/scripts/vcf.join {input.vcfs}  "
         "| gzip -c > {output}"

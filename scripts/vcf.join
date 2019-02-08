@@ -1,0 +1,9 @@
+# combine multiple vcfs, keep only first header, change first 2 lines
+1d
+2c##fileformat=VCFv3.1
+3{
+: again
+n
+/^#/b again
+}
+/^#/d

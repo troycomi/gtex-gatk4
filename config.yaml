@@ -1,9 +1,9 @@
 ---
 main:
     subworkflows:
-        - "GATK-genotype"
+        # - "GATK-genotype"
         # - "GATK-map-metrics"
-        # - "shearwater"
+        - "shearwater"
         # - "GATK-mutect2"
         # - "GATK-map"
         # - "GATK-bqsr"
@@ -272,7 +272,7 @@ gatk:
         memory: "2G"
         options: >
             -mode SNP
-            --ts-filter-level 99.0
+            --ts-filter-level 99.5
 
     EstimateLibraryComplexity:
         memory: "2G"

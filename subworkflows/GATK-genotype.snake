@@ -262,7 +262,7 @@ rule apply_vqsr:
         tranche=paths['vqsr_tranche'],
 
     output:
-        paths['vqsr_vcf']
+        vcf=paths['vqsr_vcf']
 
     singularity:
         paths['gatk-container']
