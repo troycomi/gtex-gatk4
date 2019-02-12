@@ -134,6 +134,7 @@ path:
     ref_genome: "/tigress/AKEY/akey_vol1/home/selinav/\
                  References.nobackup/hs37d5.fa"
 
+    # # # SHEARWATER # # #
     shearwater_input: "__RECAL_BAM__"
     # this is split in code
     shearwater_region: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\

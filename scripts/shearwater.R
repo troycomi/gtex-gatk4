@@ -1,4 +1,4 @@
-#library(deepSNV, quietly=TRUE)
+library(deepSNV, quietly=TRUE)
 
 args = commandArgs(trailingOnly=TRUE)
 # expect bam_dir, region, number of cores, outfiles

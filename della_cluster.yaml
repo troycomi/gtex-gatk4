@@ -4,7 +4,6 @@ __default__:
     memory: '1G'
     time: '0-2'
     jobname: "snake"
-    # note on jobname: if a rule is anonymous this will fail
 
 map_fastq:
     jobname: 'map_fastq'

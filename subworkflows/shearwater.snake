@@ -63,7 +63,7 @@ rule shearwater:
             '{input.region} '
             '{threads} '
             '{output.vcf} '
-            '&> /dev/null '
+            #'&> /dev/null '
 
 for i, files in enumerate(outfiles):
     rule:

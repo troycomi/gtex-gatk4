@@ -5,6 +5,8 @@ conda activate gtex-gatk4
 
 #note on fastq_instances: that step creates temporary unzipped
 #fastq files so only run a few to limit disk usage!
+#short_jobs are for jobs < 2 hours which are spawned in large numbers. 
+#That limits how many jobs are submitted at once to keep the queue clear
 snakemake --cluster-config 'della_cluster.yaml' \
     --cluster "sbatch --cpus-per-task={cluster.n} \
                 --mem={cluster.memory} --time={cluster.time} \
