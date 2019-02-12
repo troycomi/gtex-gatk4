@@ -1,7 +1,7 @@
-library(deepSNV, quietly=TRUE)
+#library(deepSNV, quietly=TRUE)
 
 args = commandArgs(trailingOnly=TRUE)
-# expect bam_dir, region, number of cores, outfile
+# expect bam_dir, region, number of cores, outfiles
 
 regions <- try(read.table(args[2], header=FALSE))
 if (inherits(regions, "try-error")) {
@@ -16,6 +16,10 @@ if (inherits(regions, "try-error")) {
     
     counts <- loadAllData(files, regions, mc.cores=MC_CORES)
     BF <- mcChunk("bbb", split = 200, counts, mc.cores=MC_CORES)
-    vcf <- bf2Vcf(BF=BF, counts=counts, regions=regions, samples=files)
-    writeVcf(vcf, args[4])
+    for (fname in args[-(1:3)]) {
+        prior = as.numeric(gsub("c_.*p_(.*)\\.vcf", "\\1", basename(fname)))
+        vcf = bf2Vcf(BF=BF, counts=counts, regions=regions,
+                     samples=files, prior=prior)
+        writeVcf(vcf, fname)
+    }
 }

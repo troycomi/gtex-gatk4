@@ -85,10 +85,5 @@ map_metrics:
 shearwater:
     jobname: 'shearwater'
     memory: '6G'
-    time: '1-0'
+    time: '0-8'
     n: 2
-
-group_shearwater:
-    jobname: group_shearwater
-    memory: '1G'
-    time: '0-2'

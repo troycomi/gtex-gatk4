@@ -4,17 +4,21 @@ from scripts.split_bed import count_chunks
 chunks = count_chunks(paths['shearwater_region'],
                       config['shearwater']['chunk_size'])
 
-num_chunks = 20  # chunks
+num_chunks = 10  # chunks
 
 # group jobs into batch size for jobs
 batch_size = config['shearwater']['batch_size']
+# This is expanded for one prior to keep all priors in the same group
+# Shearwater rule will make all priors regardless of this expansion
 outfiles = expand(paths['shearwater_vcf'],
-                  chunk=range(num_chunks))
+                  chunk=range(num_chunks),
+                  prior=config['shearwater']['priors'][0])
 outfiles = [outfiles[i:i+batch_size]
             for i in range(0, len(outfiles), batch_size)]
 
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['shearwater'].append(paths['shearwater_combined_vcf'])
+    subw_outputs_dict['shearwater'] = expand(paths['shearwater_combined_vcf'],
+                                        prior=config['shearwater']['priors'])
 
 localrules:
     group_shearwater 
@@ -42,7 +46,8 @@ rule shearwater:
         region=paths['shearwater_chunk']
 
     output:
-        vcf=paths['shearwater_vcf']
+        vcf=temp([paths['shearwater_vcf'].replace('{prior}', p)
+                    for p in config['shearwater']['priors']])
 
     singularity:
         paths['bioconductor-container']
@@ -58,6 +63,7 @@ rule shearwater:
             '{input.region} '
             '{threads} '
             '{output.vcf} '
+            '&> /dev/null '
 
 for i, files in enumerate(outfiles):
     rule:
@@ -65,12 +71,15 @@ for i, files in enumerate(outfiles):
         output: temp(touch(paths['shearwater_batch'].format(id=i)))
         group: 'shearwater'
 
+def get_prior_inputs(wildcards):
+    return {'vcfs': expand(paths['shearwater_vcf'].replace(
+                            '{prior}', wildcards.prior),
+                        chunk=range(num_chunks)),
+            'batch': expand(paths['shearwater_batch'],id=range(len(outfiles)))}
+
 rule group_shearwater:
     input:
-        vcfs=expand(paths['shearwater_vcf'],
-                    chunk=range(num_chunks)),
-        batch=expand(paths['shearwater_batch'],
-                     id=range(len(outfiles)))
+        unpack(get_prior_inputs)
 
     output:
         protected(paths['shearwater_combined_vcf'])

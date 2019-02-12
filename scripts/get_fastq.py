@@ -1,6 +1,5 @@
 import sys
 import os
-import io
 from glob import glob
 
 # split {dir}/{sample}_[1,2].fastq.gz

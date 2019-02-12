@@ -140,12 +140,12 @@ path:
                           Design_Annotation_files/\
                           SureSelect_Human_All_Exon_V5/\
                           S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
-    shearwater_chunk: "__DATA_ROOT__/shearwater/{chunk}.chunk"
-    shearwater_vcf: "__DATA_ROOT__/shearwater/chunk_{chunk}.vcf"
+    shearwater_chunk: "__DATA_ROOT__/shearwater_prior/{chunk}.chunk"
+    shearwater_vcf: "__DATA_ROOT__/shearwater_prior/c_{chunk}_p_{prior}.vcf"
     # temp file for batched execution
-    shearwater_batch: "__DATA_ROOT__/shearwater/{id}.temp"
-    shearwater_list: "__DATA_ROOT__/shearwater/shearwater.list"
-    shearwater_combined_vcf: "__DATA_ROOT__/shearwater/shearwater.vcf.gz"
+    shearwater_batch: "__DATA_ROOT__/shearwater_prior/{id}.temp"
+    shearwater_combined_vcf: "__DATA_ROOT__/shearwater_prior/\
+                              shearwater_{prior}.vcf.gz"
 
 gatk:
     verbosity: "ERROR"
@@ -302,4 +302,7 @@ shearwater:
     chunk_size: 20000
     # number of batches to put in a slurm job
     # cuts number of jobs and increases runtime above 2 hour limit
-    batch_size: 50
+    batch_size: 20
+    priors:
+        - "1e-3"
+        - "1e-7"
