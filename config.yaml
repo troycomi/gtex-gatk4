@@ -1,13 +1,15 @@
 ---
 main:
     subworkflows:
+        - "GATK-map"
+        - "GATK-bqsr"
+        - "alignstats"
         # - "GATK-genotype"
-        # - "GATK-map-metrics"
-        - "shearwater"
+        - "GATK-map-metrics"
         # - "GATK-mutect2"
-        # - "GATK-map"
-        # - "GATK-bqsr"
-        # - "alignstats"
+        # - "shearwater"
+
+center: "macrogen"
 
 path:
     gatk-container: "docker://broadinstitute/gatk"
@@ -18,13 +20,42 @@ path:
     # working directory of Snakefile
     temp_dir: "/scratch"
 
-    # directory to hold all output data
-    data_root: "/tigress/AKEY/akey_vol2/GTExSomaticMutations"
+    # directory to hold all result data
+    data_root: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Results.nobackup"
+
+    # Reference with index files
+    ref_genome: "/tigress/AKEY/akey_vol1/home/selinav/\
+                 References.nobackup/hs37d5.fa"
+
+    sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+                     SampInfo/sample_details.txt"
+
+    exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                      Enrichment_targets/Macrogen/\
+                      primary_target_regions_allchr_XY.bed"
+    # exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                   Enrichment_targets/NWGC/\
+    #                   primary_target_regions_allchr_XY.bed
+
+    # supplemental files for haplotype calling
+    chrom_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                      Enrichment_targets/Macrogen/ByChrom/chr{chromosome}.bed"
+    # chrom_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                     Enrichment_targets/NWGC/MoreFiles/PrimaryTarget/\
+    #                     Unpadded/IntFormat/\
+    #                     primary_target_regions_chr{chromosome}.bed"
+
+    1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+                VariantCalling.nobackup/RawVariants/BP_resolution/\
+                Supp1kg/Chr{chromosome}"
 
     # # # MAPPING # # #
-    fastq_input: "__DATA_ROOT__/original_fastq"
+    fastq_input: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                  Fastqs.nobackup/Fastqs_original"
     fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
     fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+    # only fastq or old bam needs be valid, will default to the file that exists
+    old_bam: "__MAPPING_BASE__/{id}.ubam"
 
     mapping_base: "__DATA_ROOT__/mapping"
     ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
@@ -41,7 +72,7 @@ path:
 
     # # # MAPPING METRICS # # #
     metric_bam: "__RECAL_BAM__"
-    metric_dir: "__DATA_ROOT__/map-metrics.nobackup"
+    metric_dir: "__DATA_ROOT__/map-metrics"
     metric_group: "__METRIC_DIR__/group.temp"
     metric_complexity: "__METRIC_DIR__/{id}_complexity.txt"
     metric_pileup: "__METRIC_DIR__/{id}_pileup.table"
@@ -49,23 +80,12 @@ path:
     metric_depth: "__METRIC_DIR__/{id}_diagnose.vcf"
 
     # # # BQSR # # #
-    recal_bam: "__DATA_ROOT__/MapFastqs.nobackup/{id}.bqsr.bam"
-    recal_table: "__DATA_ROOT__/MapFastqs.nobackup/{id}.{type}_bqsr.table"
-    recal_covariates: "__DATA_ROOT__/MapFastqs.nobackup/{id}.bqsr.pdf"
+    bqsr_base: "__DATA_ROOT__/bqsr"
+    recal_bam: "__BQSR_BASE__/bams/{id}.bqsr.bam"
+    recal_table: "__BQSR_BASE__/tables/{id}.{type}_bqsr.table"
+    recal_covariates: "__BQSR_BASE__/pdfs/{id}.bqsr.pdf"
 
     # # # GENOTYPE # # #
-    # supplemental files for haplotype calling
-    haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                          Design_Annotation_files/SureSelect_Chrom/\
-                          S04380110_SureSelect_V5_target_regions\
-                          _chr{chromosome}.bed"
-    # haplotype_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-    #                     Design_Annotation_files/PrimaryTarget/Unpadded/\
-    #                     IntFormat/primary_target_regions_chr{chromosome}.bed"
-    1000G_dir: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
-                VariantCalling.nobackup/RawVariants/BP_resolution/\
-                Supp1kg/Chr{chromosome}"
-
     name_map: "__DATA_ROOT__/genotype/maps/chr{chromosome}.map"
     haplotype_raw: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
                        {id}.raw_variants.g.vcf"
@@ -96,29 +116,24 @@ path:
     vqsr_script: "__DATA_ROOT__/genotype/recal/recal.plots.R"
 
     # # # MUTECT2 # # #
-    sample_details: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
-                     SampInfo/sample_details.txt"
-    sites_only: "__DATA_ROOT__/mutect2.nobackup/sites-only/{id}.vcf.gz"
-    pon_list: "__DATA_ROOT__/mutect2.nobackup/pon/\
+    sites_only: "__DATA_ROOT__/mutect2/sites-only/{id}.vcf.gz"
+    pon_list: "__DATA_ROOT__/mutect2/pon/\
                {individual}.{center}.vcf.args"
-    pon: "__DATA_ROOT__/mutect2.nobackup/pon/{individual}.{center}.vcf.gz"
+    pon: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.gz"
 
-    unfiltered_vcf: "__DATA_ROOT__/mutect2.nobackup/calls/{id}.vcf.gz"
-    mutect_bam: "__DATA_ROOT__/mutect2.nobackup/calls/{id}.bam"
+    unfiltered_vcf: "__DATA_ROOT__/mutect2/calls/{id}.vcf.gz"
+    mutect_bam: "__DATA_ROOT__/mutect2/calls/{id}.bam"
     germline_resource: "/tigress/AKEY/akey_vol1/home/selinav/\
                         References.nobackup/GATK_Mutect2_reference_bundle/\
                         af-only-gnomad.raw.sites.b37.vcf.gz"
-    exome_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                      Design_Annotation_files/SureSelect_Human_All_Exon_V5/\
-                      S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
 
     filter_input: "__RECAL_BAM__"
     common_snps: "/tigress/AKEY/akey_vol1/home/selinav/References.nobackup/\
                   GATK_Mutect2_reference_bundle/small_exac_common_3_b37.vcf.gz"
-    pileup: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_pileup.table"
-    con_tab: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_contamination.table"
-    filter_vcf: "__DATA_ROOT__/mutect2.nobackup/filtered/{id}_filtered.vcf.gz"
-    filter_vcf_temp: "__DATA_ROOT__/mutect2.nobackup/filtered/filtered.temp"
+    pileup: "__DATA_ROOT__/mutect2/filtered/{id}_pileup.table"
+    con_tab: "__DATA_ROOT__/mutect2/filtered/{id}_contamination.table"
+    filter_vcf: "__DATA_ROOT__/mutect2/filtered/{id}_filtered.vcf.gz"
+    filter_vcf_temp: "__DATA_ROOT__/mutect2/filtered/filtered.temp"
 
     # # # ALIGNSTATS # # #
     # exe location
@@ -126,21 +141,11 @@ path:
                  src/alignstats/alignstats"
     alignstats_input: "__RECAL_BAM__"
     alignstats_output: "__DATA_ROOT__/alignstats/{id}.report.txt"
-    alignstats_target: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                        Design_Annotation_files/PrimaryTarget/Unpadded/\
-                        IntFormat/primary_target_regions_allchr_XY.bed"
 
-    # Reference with index files
-    ref_genome: "/tigress/AKEY/akey_vol1/home/selinav/\
-                 References.nobackup/hs37d5.fa"
 
     # # # SHEARWATER # # #
     shearwater_input: "__RECAL_BAM__"
     # this is split in code
-    shearwater_region: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                          Design_Annotation_files/\
-                          SureSelect_Human_All_Exon_V5/\
-                          S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
     shearwater_chunk: "__DATA_ROOT__/shearwater_prior/{chunk}.chunk"
     shearwater_vcf: "__DATA_ROOT__/shearwater_prior/c_{chunk}_p_{prior}.vcf"
     # temp file for batched execution
@@ -150,6 +155,17 @@ path:
 
 gatk:
     verbosity: "ERROR"
+
+    RevertSam:
+        memory: "12G"
+        options: >
+            --ATTRIBUTE_TO_CLEAR=XA
+            --ATTRIBUTE_TO_CLEAR=XS
+            --ATTRIBUTE_TO_CLEAR=OC
+            --ATTRIBUTE_TO_CLEAR=OP
+            --ATTRIBUTE_TO_CLEAR=BD
+            --ATTRIBUTE_TO_CLEAR=BI
+
     FastqToSam:
         memory: "4G"
         options: "-PL=ILLUMINA"
@@ -196,10 +212,6 @@ gatk:
             --known-sites /tigress/AKEY/akey_vol1/home/selinav/\
             References.nobackup/GATK_reference_bundle_b37/\
             1000G_phase1.indels.b37.vcf.gz"
-        target_intervals: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                           Design_Annotation_files/\
-                           SureSelect_Human_All_Exon_V5/\
-                           S04380110_SureSelect_V5_target_regions_allchr_XY.bed"
 
     HaplotypeCaller:
         memory: "2G"

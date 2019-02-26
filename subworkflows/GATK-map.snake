@@ -1,10 +1,30 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=ids)
 
+rule revert_sam:
+    input:
+        ancient(paths['old_bam'])
+
+    output:
+        temp(paths['ubam'])
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'map_fastq'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][RevertSam][memory]}" '
+            'RevertSam '
+            '--VERBOSITY {gatk[verbosity]} '
+            '--TMP_DIR={path[temp_dir]} '
+            '-I={input} '
+            '-O={output} '
+    
 rule fastq_to_ubam:
     input:
-        R1=paths['fastq_R1'],
-        R2=paths['fastq_R2']
+        R1=ancient(paths['fastq_R1']),
+        R2=ancient(paths['fastq_R2'])
 
     output:
         temp(paths['ubam'])

@@ -1,7 +1,7 @@
 from scripts.split_bed import count_chunks
 
 # read in region file to determine number of chunks
-chunks = count_chunks(paths['shearwater_region'],
+chunks = count_chunks(paths['exome_intervals'],
                       config['shearwater']['chunk_size'])
 
 num_chunks = 10  # chunks
@@ -25,7 +25,7 @@ localrules:
 
 rule shearwater_region:
     input:
-        region=paths['shearwater_region']
+        region=paths['exome_intervals']
 
     output:
         temp(paths['shearwater_chunk'])

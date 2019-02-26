@@ -26,7 +26,7 @@ rule bqsr_table:
         'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
             'BaseRecalibrator '
             '-R {paths[ref_genome]} '
-            '-L {config[gatk][BQSR][target_intervals]} '
+            '-L {paths[exome_intervals]} '
             '--verbosity {config[gatk][verbosity]} '
             '-I {input.bam} '
             '-O {output} '

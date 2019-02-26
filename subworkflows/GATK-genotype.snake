@@ -12,14 +12,14 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
 # determine number of chunks for each chromosome
 chunks = {}
 for chrom in chroms:
-    chunks[str(chrom)] = count_chunks(paths['haplotype_intervals']\
+    chunks[str(chrom)] = count_chunks(paths['chrom_intervals']\
                                     .format(chromosome=chrom),
                                  config['gatk']['GenotypeGVCFs']['chunk_size'])
 
 rule haplotype_caller:
     input:
         bam=paths['recal_bam'],
-        interval=paths['haplotype_intervals']
+        interval=paths['chrom_intervals']
 
     output:
         vcf=paths['haplotype_raw'],
@@ -97,7 +97,7 @@ rule db_import:
 
 rule split_chunk:
     input:
-        region=paths['haplotype_intervals']
+        region=paths['chrom_intervals']
 
     output:
         temp(paths['genotype_chunk'])
