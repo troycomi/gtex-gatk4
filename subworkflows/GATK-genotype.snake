@@ -3,9 +3,12 @@ from scripts.split_bed import count_chunks
 
 chroms = list(range(1,23))
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    recal = [paths['vqsr_script']]
+#    subw_outputs_dict['GATK-genotype'] = expand(paths['name_map'],
+#                                                chromosome=chroms[0])
+
+    recal = [paths['snp_tranche']]
     if all([os.path.exists(f) for f in recal]):
-        subw_outputs_dict['GATK-genotype'] = [paths['vqsr_vcf']]
+        subw_outputs_dict['GATK-genotype'] = [paths['indel_vcf']]
     else:
         subw_outputs_dict['GATK-genotype'] = recal
 
@@ -16,10 +19,13 @@ for chrom in chroms:
                                     .format(chromosome=chrom),
                                  config['gatk']['GenotypeGVCFs']['chunk_size'])
 
+localrules:
+    name_map
+
 rule haplotype_caller:
     input:
-        bam=paths['recal_bam'],
-        interval=paths['chrom_intervals']
+        bam=ancient(paths['recal_bam']),
+        interval=ancient(paths['chrom_intervals'])
 
     output:
         vcf=paths['haplotype_raw'],
@@ -42,39 +48,42 @@ rule haplotype_caller:
 
 rule name_map:
     input:
-        lambda wildcards: expand(paths['haplotype_raw']\
-                                 .replace('{chromosome}', \
-                                          wildcards.chromosome),
-                                 id=ids),
-        lambda wildcards: expand(paths['haplotype_idx']\
-                                 .replace('{chromosome}', \
-                                          wildcards.chromosome),
-                                 id=ids)
+        vcf=lambda wildcards: expand(paths['haplotype_raw']\
+                                     .replace('{chromosome}', \
+                                              wildcards.chromosome),
+                                     id=ids),
+        idx=lambda wildcards: expand(paths['haplotype_idx']\
+                                     .replace('{chromosome}', \
+                                              wildcards.chromosome),
+                                     id=ids)
 
     output:
         temp(paths['name_map'])
-
-    group: 'haplotype'
 
     run:
         import glob
         import os
         with open(output[0], 'w') as outfile:
             # get variants in output
-            variant_dir = os.path.split(paths['haplotype_raw'])[0]
-            variant_dir = variant_dir.replace('{chromosome}', wildcards.chromosome)
-            # get variants in 1000 genomes
-            supp_dir = paths['1000G_dir'].replace('{chromosome}', wildcards.chromosome)
+            for f in input.vcf:
+                sample = os.path.split(f)[1]
+                sample = sample[:sample.find('.')]  # remove after first _
+                outfile.write(
+                    "{}\t{}\n".format(
+                        sample,
+                        f))
 
-            split_chars = ['.', '_']
-            for i, d in enumerate([variant_dir, supp_dir]):
-                for f in glob.glob(d + "/*.g.vcf"):
-                    sample = os.path.split(f)[1]
-                    sample = sample[:sample.find(split_chars[i])]  # remove after first .
-                    outfile.write(
-                        "{}\t{}\n".format(
-                            sample,
-                            f))
+            # get variants in 1000 genomes
+            supp_dir = paths['1000G_dir'].replace('{chromosome}',
+                                                  wildcards.chromosome)
+
+            for f in glob.glob(supp_dir + "/*.g.vcf"):
+                sample = os.path.split(f)[1]
+                sample = sample[:sample.find('_')]  # remove after first _
+                outfile.write(
+                    "{}\t{}\n".format(
+                        sample,
+                        f))
 
 rule db_import:
     input:
@@ -220,25 +229,25 @@ rule merge_chromosome_gvcf:
             '--INPUT {input.vcfList} '
             '--OUTPUT {output.vcf} '
 
-def get_variant_options(wildcards):
+def get_snp_options(wildcards):
     return config['gatk']['VariantRecalibrator']['options'].format(
             hapmap=paths['ref_hapmap'],
             omni=paths['ref_omni'],
             OKG=paths['ref_1000g'],
             dbsnp=paths['ref_dbsnp'])
 
-rule variant_recal:
+rule variant_recal_snp:
     input:
         ref=paths['ref_genome'],
         vcf=paths['vqsr_merged_vcf'],
 
     output:
-        recal=paths['vqsr_recal'],
-        tranche=paths['vqsr_tranche'],
-        rscript=paths['vqsr_script']
+        recal=paths['snp_recal'],
+        tranche=paths['snp_tranche'],
+        rscript=paths['snp_script']
 
     params:
-        get_variant_options
+        get_snp_options
 
     singularity:
         paths['gatk-container']
@@ -254,15 +263,15 @@ rule variant_recal:
             '--rscript-file {output.rscript} '
             '{params}'
 
-rule apply_vqsr:
+rule apply_vqsr_snp:
     input:
         ref=paths['ref_genome'],
         vcf=paths['vqsr_merged_vcf'],
-        recal=paths['vqsr_recal'],
-        tranche=paths['vqsr_tranche'],
+        recal=paths['snp_recal'],
+        tranche=paths['snp_tranche'],
 
     output:
-        vcf=paths['vqsr_vcf']
+        vcf=paths['snp_vcf']
 
     singularity:
         paths['gatk-container']
@@ -277,3 +286,59 @@ rule apply_vqsr:
             '-V {input.vcf} '
             '-O {output.vcf} '
             '{config[gatk][ApplyVQSR][options]}'
+
+def get_indel_options(wildcards):
+    return config['gatk']['VariantRecalibratorIndel']['options'].format(
+            mills=paths['ref_mills'],
+            dbsnp=paths['ref_dbsnp'])
+
+rule variant_recal_indel:
+    input:
+        ref=paths['ref_genome'],
+        vcf=paths['snp_vcf'],
+
+    output:
+        recal=paths['indel_recal'],
+        tranche=paths['indel_tranche'],
+        rscript=paths['indel_script']
+
+    params:
+        get_indel_options
+
+    singularity:
+        paths['gatk-container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][VariantRecalibrator][memory]}" '
+            'VariantRecalibrator '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {input.ref} '
+            '-V {input.vcf} '
+            '--output {output.recal} '
+            '--tranches-file {output.tranche} '
+            '--rscript-file {output.rscript} '
+            '{params}'
+
+rule apply_vqsr_indel:
+    input:
+        ref=paths['ref_genome'],
+        vcf=paths['snp_vcf'],
+        recal=paths['indel_recal'],
+        tranche=paths['indel_tranche'],
+
+    output:
+        vcf=paths['indel_vcf']
+
+    singularity:
+        paths['gatk-container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][ApplyVQSR][memory]}" '
+            'ApplyVQSR '
+            '--verbosity {config[gatk][verbosity]} '
+            '-R {input.ref} '
+            '--tranches-file {input.tranche} '
+            '--recal-file {input.recal} '
+            '-V {input.vcf} '
+            '-O {output.vcf} '
+            '{config[gatk][ApplyVQSRIndel][options]}'

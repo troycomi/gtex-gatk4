@@ -5,6 +5,12 @@ __default__:
     time: '0-2'
     jobname: "snake"
 
+fastq_to_ubam:
+    n: 2
+    jobname: 'fastq_to_ubam'
+    memory: '3G'
+    time: '0-1'
+
 map_fastq:
     jobname: 'map_fastq'
     time: '0-8'
@@ -32,12 +38,12 @@ haplotype:
 db_import:
     jobname: 'db_import'
     memory: '5G'
-    time: '1-0'
+    time: '3-0'
 
 genotype_gvcf:
     jobname: 'genotype_gvcf'
     memory: '5G'
-    time: '1-0'
+    time: '3-0'
 
 merge_genotype_gvcf:
     jobname: 'merge_gvcf'
@@ -52,12 +58,12 @@ sites_only:
 create_pon:
     jobname: 'create_pon'
     memory: '9G'
-    time: '0-2'
+    time: '1-0'
 
 call_variants:
     jobname: 'call_variants'
     memory: '4G'
-    time: '0-2'
+    time: '0-8'
 
 # This is for all files
 filter_variants:
@@ -66,20 +72,30 @@ filter_variants:
     time: '1-0'
     n: 10
 
-variant_recal:
-    jobname: 'variant_recal'
+variant_recal_indel:
+    jobname: 'variant_recal_indel'
     memory: '2G'
-    time: '0-2:00'
+    time: '0-2'
 
-apply_vqsr:
-    jobname: 'apply_vqsr'
+apply_vqsr_indel:
+    jobname: 'apply_vqsr_indel'
+    memory: '2G'
+    time: '0-1'
+
+variant_recal_snp:
+    jobname: 'variant_recal_snp'
+    memory: '2G'
+    time: '0-2'
+
+apply_vqsr_snp:
+    jobname: 'apply_vqsr_snp'
     memory: '2G'
     time: '0-1'
 
 map_metrics:
     jobname: 'map_metrics'
-    memory: '2G'
-    time: '0-2'
+    memory: '4G'
+    time: '0-1'
 
 shearwater:
     jobname: 'shearwater'

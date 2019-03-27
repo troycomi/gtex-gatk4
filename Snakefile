@@ -9,21 +9,24 @@ paths = clean_config_paths(paths)
 paths['base'] = os.getcwd()
 
 # sample ids to run workflow with
-ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
+#ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
+ids = glob_wildcards(paths['recal_bam']).id
 
 sample_details = get_samples(paths['sample_details'])
 
 # remove samples not matching the chosen center
-sample_details = {sample: detail for sample, detail in sample_details.items()
-                    if detail.center == config['center']}
+if config['center'] != 'all':
+    sample_details = {sample: detail
+                      for sample, detail in sample_details.items()
+                      if detail.center == config['center']}
 
 
-# remove ids not found in sample details
+## remove ids not found in sample details
 ids = [id for id in ids if id in sample_details]
-# keep only samples from second batch (with b as last char)
-ids = [id for id in ids if id[-1] == 'b']
+## keep only samples from second batch (with b as last char)
+#ids = [id for id in ids if id[-1] == 'b']
 
-# ids = ids[0:1]
+#ids = ids[0:2]
 print(f"{len(ids)} samples found to process")
 
 subworkflows = config['main']['subworkflows']

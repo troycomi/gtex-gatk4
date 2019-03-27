@@ -35,8 +35,6 @@ rule fastq_to_ubam:
     resources:
         fastq_instances=1
 
-    group: 'map_fastq'
-
     shell:
         'zcat {input.R1} | '
             'python {paths[base]}/scripts/split_fastq.py \

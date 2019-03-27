@@ -1,5 +1,15 @@
+with open(paths['mutect_pairs'], 'r') as reader:
+    reader.readline()  # header
+    tumor_normal = {}
+    for line in reader:
+        tokens = line.split()
+        tumor_normal[tokens[0]] = tokens[1]
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'], id=ids)
+    output_ids = [id for id in ids if id in tumor_normal]
+    #output_ids = output_ids[0:2]
+    subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
+                                               id=output_ids)
     subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
 
 localrules:
@@ -7,8 +17,8 @@ localrules:
 
 rule sites_only:
     input: 
-        bam=paths['recal_bam'],
-        ref=paths['ref_genome']
+        bam=ancient(paths['recal_bam']),
+        ref=ancient(paths['ref_genome'])
 
     output:
         paths['sites_only']
@@ -32,7 +42,6 @@ rule sites_only:
             '--tumor $SAMPLE '
             '--output {output} '
             '--verbosity {config[gatk][verbosity]} '
-            '{config[gatk][Mutect2_Sites_Only][options]}'
         
 def get_pon_samples(wildcards):
     pon_ids = [detail.sample 
@@ -40,6 +49,9 @@ def get_pon_samples(wildcards):
                if (detail.individual != wildcards.individual and
                     detail.center == wildcards.center)
                ]
+    # remove duplicates from nwgc
+    if wildcards.center == 'nwgc':
+        pon_ids = [pon_id for pon_id in pon_ids if pon_id[-1] != 'd']
     return expand(paths['sites_only'],
                   id=pon_ids)
 
@@ -48,7 +60,7 @@ rule pon_mutect_args:
         get_pon_samples
 
     output:
-        paths['pon_list']
+        temp(paths['pon_list'])
 
     group: 'create_pon'
 
@@ -76,12 +88,61 @@ rule generate_pon:
             '-vcfs {input} '
             '--verbosity {config[gatk][verbosity]} '
 
+rule collect_counts:
+    input:
+        paths['recal_bam']
+
+    output:
+        table=paths['mutect_alt'],
+        ref_hist=paths['mutect_ref_hist'],
+        alt_hist=paths['mutect_alt_hist']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'call_variants'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][CollectF1R2Counts][memory]}" '
+            'CollectF1R2Counts '
+            '--reference {paths[ref_genome]} '
+            '--intervals {paths[exome_intervals]} '
+            '--input {input} '
+            '-alt-table {output.table} '
+            '-ref-hist {output.ref_hist} '
+            '-alt-hist {output.alt_hist} '
+            '--verbosity {config[gatk][verbosity]} '
+ 
+rule learn_model:
+    input:
+        table=paths['mutect_alt'],
+        ref_hist=paths['mutect_ref_hist'],
+        alt_hist=paths['mutect_alt_hist']
+
+    output:
+        paths['mutect_prior']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'call_variants'
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][LearnReadOrientationModel][memory]}" '
+            'LearnReadOrientationModel '
+            '-alt-table {input.table} '
+            '-ref-hist {input.ref_hist} '
+            '-alt-hist {input.alt_hist} '
+            '-O {output} '
+            '--verbosity {config[gatk][verbosity]} '
+ 
 def get_call_input(wildcards):
     detail = sample_details[wildcards.id]
     param = get_call_params(wildcards)
     result = {'pon': expand(paths['pon'],
                             individual=detail.individual,
                             center=detail.center),
+            'prior': expand(paths['mutect_prior'], id=wildcards.id),
             'test': expand(paths['recal_bam'], id=wildcards.id),
             'normal': expand(paths['recal_bam'], id=param['normal'])}
 
@@ -93,14 +154,16 @@ def get_call_params(wildcards):
     strip ending d for nwgc samples
     '''
     test_details = sample_details[wildcards.id]
-    normal_details = next((detail for detail in sample_details.values()
-                           if detail.individual == test_details.individual and
-                              detail.center == test_details.center and
-                              detail.sample != test_details.sample), None)
-    if normal_details is None:
+    #normal_details = next((detail for detail in sample_details.values()
+    #                       if detail.individual == test_details.individual and
+    #                          detail.center == test_details.center and
+    #                          detail.sample != test_details.sample), None)
+    #if normal_details is None:
+    if wildcards.id not in tumor_normal:
         raise ValueError("No matching normal sample found for sample " + 
                          wildcards.id)
 
+    normal_details = sample_details[tumor_normal[wildcards.id]]
     test = test_details.sample
     if test_details.center == 'nwgc':
         test = test.rstrip('d')
@@ -126,6 +189,8 @@ rule call_variants:
     singularity:
         paths['gatk-container']
 
+    group: 'call_variants'
+
     shell:
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Calls][memory]}" '
             'Mutect2 '
@@ -139,6 +204,7 @@ rule call_variants:
             '-bamout {output.bam} '
             '--germline-resource {paths[germline_resource]} '
             '--intervals {paths[exome_intervals]} '
+            '--orientation-bias-artifact-priors {input.prior} '
             '--verbosity {config[gatk][verbosity]} '
             '{config[gatk][Mutect2_Calls][options]} '
 
@@ -182,7 +248,7 @@ rule filter_variants:
 rule group_filter:
     input:
         expand(paths['filter_vcf'],
-                id=ids)
+                id=output_ids)
 
     output:
         touch(temp(paths['filter_vcf_temp']))
