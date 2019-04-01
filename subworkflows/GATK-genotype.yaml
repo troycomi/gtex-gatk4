@@ -1,0 +1,116 @@
+---
+path:
+    # # # GENOTYPE # # #
+    sub_genotype: "__DATA_ROOT__/genotype/macrogen"
+    haplotype_raw: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
+                       {id}.raw_variants.g.vcf"
+    haplotype_idx: "__DATA_ROOT__/genotype/haplotypes/chr{chromosome}/\
+                       {id}.raw_variants.g.vcf.idx"
+    name_map: "__SUB_GENOTYPE__/maps/chr{chromosome}.map"
+    genomics_db: "__SUB_GENOTYPE__/DB/chr{chromosome}"
+    genotype_chunk: "__SUB_GENOTYPE__/genotype/chunk/\
+                          chr{chromosome}_chunk{chunk}.bed"
+    genotype_gvcf_chunk: "__SUB_GENOTYPE__/genotype/chunk/\
+                          chr{chromosome}_chunk{chunk}.vcf.gz"
+    genotype_tbi_chunk: "__SUB_GENOTYPE__/genotype/chunk/\
+                         chr{chromosome}_chunk{chunk}.vcf.gz.tbi"
+    genotype_list: "__SUB_GENOTYPE__/genotype/chr{chromosome}.list"
+    genotype_gvcf: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz"
+    genotype_tbi: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz.tbi"
+    chromosome_list: "__SUB_GENOTYPE__/genotype/recal/merged.list"
+    vqsr_merged_vcf: "__SUB_GENOTYPE__/genotype/recal/merged.vcf.gz"
+
+    # SNP
+    snp_recal: "__SUB_GENOTYPE__/genotype/recal/snp.recal"
+    snp_tranche: "__SUB_GENOTYPE__/genotype/recal/snp.tranches"
+    snp_vcf: "__SUB_GENOTYPE__/genotype/recal/snp.vcf.gz"
+    snp_script: "__SUB_GENOTYPE__/genotype/recal/snp.plots.R"
+    # INDEL
+    indel_recal: "__SUB_GENOTYPE__/genotype/recal/indel.recal"
+    indel_tranche: "__SUB_GENOTYPE__/genotype/recal/indel.tranches"
+    indel_vcf: "__SUB_GENOTYPE__/genotype/recal/indel.vcf.gz"
+    indel_script: "__SUB_GENOTYPE__/genotype/recal/indel.plots.R"
+
+gatk:
+    HaplotypeCaller:
+        memory: "2G"
+        options: >-
+            --interval-padding 150
+            --emit-ref-confidence BP_RESOLUTION
+
+    GenotypeGVCFs:
+        chunk_size: 500000
+        memory: "4G"
+        options: >-
+            --use-new-qual-calculator
+            --interval-padding 100
+
+    GenomicsDBImport:
+        memory: "4G"
+        options: >
+            --batch-size 50
+
+    MergeVcfs:
+        memory: "1G"
+
+    VariantRecalibratorIndel:
+        memory: "2G"
+        options:
+            "-tranche 100.0
+            -tranche 99.9
+            -tranche 99.5
+            -tranche 99.0
+            -tranche 98.5
+            -tranche 98.0
+            -tranche 97.5
+            -tranche 97.0
+            -mode INDEL
+            -an QD
+            -an MQ
+            -an MQRankSum
+            -an ReadPosRankSum
+            -an FS
+            -an SOR
+            -resource:mills,known=false,training=true,\
+            truth=true,prior=12.0 {mills}
+            -resource:dbsnp,known=true,training=false,\
+            truth=false,prior=2.0 {dbsnp}"
+
+    VariantRecalibrator:
+        memory: "2G"
+        options:
+            "-tranche 100.0
+            -tranche 99.9
+            -tranche 99.5
+            -tranche 99.0
+            -tranche 98.5
+            -tranche 98.0
+            -tranche 97.5
+            -tranche 97.0
+            -mode SNP
+            -an QD
+            -an MQ
+            -an MQRankSum
+            -an ReadPosRankSum
+            -an FS
+            -an SOR
+            -resource:hapmap,known=false,training=true,\
+            truth=true,prior=15.0 {hapmap}
+            -resource:omni,known=false,training=true,\
+            truth=true,prior=12.0 {omni}
+            -resource:1000G,known=false,training=true,\
+            truth=false,prior=10.0 {OKG}
+            -resource:dbsnp,known=true,training=false,\
+            truth=false,prior=2.0 {dbsnp}"
+
+    ApplyVQSR:
+        memory: "2G"
+        options: >
+            -mode SNP
+            --ts-filter-level 99.5
+
+    ApplyVQSRIndel:
+        memory: "2G"
+        options: >
+            -mode INDEL
+            --ts-filter-level 99.5

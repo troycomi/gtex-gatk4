@@ -3,7 +3,7 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
 
 rule alignstats:
     input:
-        paths['alignstats_input']
+        paths['recal_bam']
 
     output:
         paths['alignstats_output']

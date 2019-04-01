@@ -210,7 +210,7 @@ rule call_variants:
 
 rule filter_variants:
     input:
-        bam=paths['filter_input'],
+        bam=paths['recal_bam'],
         vcf=paths['unfiltered_vcf']
 
     output:

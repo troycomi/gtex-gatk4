@@ -1,6 +1,8 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=ids)
 
+ruleorder: fastq_to_ubam > revert_sam
+
 rule revert_sam:
     input:
         ancient(paths['old_bam'])

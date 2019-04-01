@@ -1,6 +1,11 @@
+from scripts.clean_config import join_config_paths
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-bqsr'] = expand(paths['recal_covariates'], id=ids)
 
+if 'dedup_bam' not in paths:
+    configfile: paths['base'] + '/subworkflows/GATK-map.yaml'
+    paths = join_config_paths(paths, config['path'])
 
 def get_bam(wildcards):
     if wildcards.type == 'before':
@@ -10,12 +15,22 @@ def get_bam(wildcards):
     else:
         raise ValueError("Unknown bqsr table type {}".format(wildcards.type))
 
+def get_table_options(wildcards):
+    return config['gatk']['BQSR']['known_sites'].format(
+            dbsnp=paths['ref_dbsnp'],
+            mills=paths['ref_mills'],
+            indel=paths['ref_indel'],
+            )
+
 rule bqsr_table:
     input:
         unpack(get_bam)
 
     output:
         paths['recal_table']
+
+    params:
+        get_table_options 
 
     singularity:
         paths['gatk-container']
@@ -30,7 +45,7 @@ rule bqsr_table:
             '--verbosity {config[gatk][verbosity]} '
             '-I {input.bam} '
             '-O {output} '
-            '{config[gatk][BQSR][known_sites]} '
+            '{params} '
 
 def get_before_table(wildcards):
     return {'bam': paths['dedup_bam'],

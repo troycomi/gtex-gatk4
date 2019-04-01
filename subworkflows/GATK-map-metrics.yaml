@@ -1,0 +1,24 @@
+---
+path:
+    # # # MAPPING METRICS # # #
+    metric_dir: "__DATA_ROOT__/map-metrics"
+    metric_group: "__METRIC_DIR__/group.temp"
+    metric_complexity: "__METRIC_DIR__/{id}_complexity.txt"
+    metric_pileup: "__METRIC_DIR__/{id}_pileup.table"
+    metric_contam: "__METRIC_DIR__/{id}_contamination.table"
+    metric_depth: "__METRIC_DIR__/{id}_diagnose.vcf"
+
+gatk:
+    EstimateLibraryComplexity:
+        memory: "2G"
+        options: "--OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500"
+
+    GetPileupSummaries:
+        memory: "2G"
+        options: "--interval-padding 100"
+
+    CalculateContamination:
+        memory: "2G"
+
+    DiagnoseTargets:
+        memory: "2G"

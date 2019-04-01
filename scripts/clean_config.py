@@ -22,3 +22,14 @@ def clean_config_paths(path):
         path[key] = '/'.join(toks)
 
     return path
+
+
+def join_config_paths(base_path, new_paths):
+    # add new paths to base. Values already in base are ignored.
+    # can't selectively load those paths so all old values are also included
+    # after merge, clean new dict paths
+    for key, value in new_paths.items():
+        if key not in base_path:
+            base_path[key] = value
+
+    return clean_config_paths(base_path)

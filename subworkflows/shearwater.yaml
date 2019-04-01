@@ -1,0 +1,24 @@
+---
+path:
+    # # # SHEARWATER # # #
+    # this is split in code
+    shearwater_chunk: "__DATA_ROOT__/shearwater_prior/{chunk}.chunk"
+    shearwater_vcf: "__DATA_ROOT__/shearwater_prior/c_{chunk}_p_{prior}.vcf"
+    # temp file for batched execution
+    shearwater_batch: "__DATA_ROOT__/shearwater_prior/{id}.temp"
+    shearwater_combined_vcf: "__DATA_ROOT__/shearwater_prior/\
+                              shearwater_{prior}.vcf.gz"
+
+shearwater:
+    # this is the maximum allowed by snakemake, will scale down
+    # to match the config or called option
+    threads: 2
+    # number of basepairs to read in at a time
+    # 20 kbp runs in ~10 minutes, consuming 5 GB
+    chunk_size: 20000
+    # number of batches to put in a slurm job
+    # cuts number of jobs and increases runtime above 2 hour limit
+    batch_size: 20
+    priors:
+        - "1e-3"
+        - "1e-7"

@@ -41,7 +41,7 @@ rule shearwater_region:
 
 rule shearwater:
     input: 
-        bams=expand(paths['shearwater_input'],
+        bams=expand(paths['recal_bam'],
                     id=ids),
         region=paths['shearwater_chunk']
 

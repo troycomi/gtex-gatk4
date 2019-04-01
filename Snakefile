@@ -1,4 +1,4 @@
-from scripts.clean_config import clean_config_paths
+from scripts.clean_config import clean_config_paths, join_config_paths
 from scripts.get_samples import get_samples
 import os
 
@@ -7,6 +7,10 @@ configfile: 'config.yaml'
 paths = config['path']
 paths = clean_config_paths(paths)
 paths['base'] = os.getcwd()
+
+if 'recal_bam' not in paths:
+    configfile: paths['base'] + '/subworkflows/GATK-bqsr.yaml'
+    paths = join_config_paths(paths, config['path'])
 
 # sample ids to run workflow with
 #ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
@@ -26,8 +30,8 @@ ids = [id for id in ids if id in sample_details]
 ## keep only samples from second batch (with b as last char)
 #ids = [id for id in ids if id[-1] == 'b']
 
-#ids = ids[0:2]
-print(f"{len(ids)} samples found to process")
+ids = ids[0:2]
+print(f"found {len(ids)} samples to process")
 
 subworkflows = config['main']['subworkflows']
 if subworkflows is None:
@@ -38,10 +42,15 @@ subw_outputs = []
 
 for subw in set(subworkflows):
     sub_path = 'subworkflows/{}.snake'.format(subw)
+    sub_config = 'subworkflows/{}.yaml'.format(subw)
     if not os.path.exists(sub_path):
         continue
 
     subw_outputs_dict[subw] = []
+
+    if os.path.exists(sub_config):
+        configfile: sub_config
+        paths = join_config_paths(paths, config['path'])
 
     include: sub_path
 

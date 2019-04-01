@@ -1,0 +1,69 @@
+---
+path:
+    # # # MAPPING # # #
+    fastq_input: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                  Fastqs.nobackup/Fastqs_original"
+    fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
+    fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+    # only fastq or old bam needs be valid
+    # if both exist will use the fastq
+    old_bam: "__MAPPING_BASE__/{id}.ubam"
+
+    mapping_base: "__DATA_ROOT__/mapping"
+    ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
+    marked_bam: "__MAPPING_BASE__/marked_bam/{id}.marked.bam"
+    marked_metric: "__MAPPING_BASE__/marked_bam/{id}.marked.metrics.txt"
+    marked_fastq: "__MAPPING_BASE__/marked_fastq/{id}.marked.fastq"
+    temp_mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.temp.bam"
+    mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bam"
+    mapped_bai: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bai"
+
+    dedup_bam: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam"
+    dedup_bai: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam.bai"
+    dedup_metric: "__MAPPING_BASE__/dedup_bam/{id}.dupmetrics.txt"
+
+gatk:
+    RevertSam:
+        memory: "12G"
+        options: >
+            --ATTRIBUTE_TO_CLEAR=XA
+            --ATTRIBUTE_TO_CLEAR=XS
+            --ATTRIBUTE_TO_CLEAR=OC
+            --ATTRIBUTE_TO_CLEAR=OP
+            --ATTRIBUTE_TO_CLEAR=BD
+            --ATTRIBUTE_TO_CLEAR=BI
+
+    FastqToSam:
+        memory: "4G"
+        options: "-PL=ILLUMINA"
+
+    MergeSamFiles:
+        memory: "4G"
+        options: "-SO queryname"
+
+    MarkIlluminaAdapters:
+        memory: "4G"
+
+    SamToFastq:
+        memory: "7G"
+        options: >
+            --CLIPPING_ATTRIBUTE=XT
+            --CLIPPING_ACTION=2
+            --INTERLEAVE=true
+            --NON_PF=true
+
+    Bwa_Mem:
+        options: "-M -t 2"
+
+    MergeBamAlignment:
+        memory: "7G"
+        options: >
+            --CREATE_INDEX=true
+            --ADD_MATE_CIGAR=true
+            --INCLUDE_SECONDARY_ALIGNMENTS=true
+            --MAX_INSERTIONS_OR_DELETIONS=-1
+            --PRIMARY_ALIGNMENT_STRATEGY=MostDistant
+            --ATTRIBUTES_TO_RETAIN=XS
+
+    MarkDuplicates:
+        memory: "4G"

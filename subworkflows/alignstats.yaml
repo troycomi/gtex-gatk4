@@ -1,0 +1,12 @@
+---
+path:
+    # # # ALIGNSTATS # # #
+    # exe location
+    alignstats: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
+                 src/alignstats/alignstats"
+    alignstats_output: "__DATA_ROOT__/alignstats/{id}.report.txt"
+
+alignstats:
+    options: >
+        -p
+        -P 2

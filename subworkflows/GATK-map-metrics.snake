@@ -3,7 +3,7 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
 
 rule estimate_complexity:
     input:
-        paths['metric_bam']
+        paths['recal_bam']
 
     output:
         paths['metric_complexity']
@@ -23,7 +23,7 @@ rule estimate_complexity:
 
 rule pileup_summaries:
     input:
-        paths['metric_bam'],
+        paths['recal_bam'],
         paths['metric_complexity']
 
     output:
@@ -65,7 +65,7 @@ rule calc_contamination:
 
 rule diagnose_targets:
     input:
-        paths['metric_bam'],
+        paths['recal_bam'],
         paths['metric_contam']
 
     output:
