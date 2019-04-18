@@ -115,9 +115,9 @@ rule collect_counts:
  
 rule learn_model:
     input:
-        table=paths['mutect_alt'],
-        ref_hist=paths['mutect_ref_hist'],
-        alt_hist=paths['mutect_alt_hist']
+        table=ancient(paths['mutect_alt']),
+        ref_hist=ancient(paths['mutect_ref_hist']),
+        alt_hist=ancient(paths['mutect_alt_hist'])
 
     output:
         paths['mutect_prior']

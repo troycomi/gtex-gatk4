@@ -30,7 +30,7 @@ ids = [id for id in ids if id in sample_details]
 ## keep only samples from second batch (with b as last char)
 #ids = [id for id in ids if id[-1] == 'b']
 
-ids = ids[0:2]
+#ids = ids[0:2]
 print(f"found {len(ids)} samples to process")
 
 subworkflows = config['main']['subworkflows']

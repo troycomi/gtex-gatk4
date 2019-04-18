@@ -1,0 +1,138 @@
+if 'igv_vcf' in paths:
+    vcf_ids = glob_wildcards(paths['igv_vcf']).id
+    igv_ids = [id for id in ids if id in vcf_ids]
+
+    outfiles = []
+    out_dict = {}
+    for id in igv_ids:
+        with open(paths['igv_vcf'].format(id=id), 'r') as vcf:
+            for line in vcf:
+                if line[0] == '#':
+                    continue
+                toks = line.split()
+                if toks[6] == 'PASS':
+                    # only want one outfile per sample
+                    # others will be generated as well
+                    if id not in out_dict:
+                        out_dict[id] = []
+                        out_file = paths['igv_png'].format(
+                            id=id,
+                            chr=toks[0],
+                            pos=toks[1])
+                        outfiles.append(out_file)
+                    out_dict[id].append((toks[0], int(toks[1])))
+
+    # now the outfiles contain the first of the regions to export
+    # need to reverse in case the exporting gets interrupted in the middle
+    # this will force a re run since the expected file isn't created
+    for k in out_dict.keys():
+        out_dict[k] = list(reversed(out_dict[k])) 
+
+    if "subw_outputs_dict" in locals() and "ids" in locals():
+        #subw_outputs_dict['igv_batch'] = [paths['igv_group']]
+        subw_outputs_dict['igv_batch'] = outfiles
+
+elif 'igv_list' in paths:
+    out_dict = {}
+    outfiles = []
+    with open(paths['igv_list'], 'r') as in_list:
+        in_list.readline()  # header
+        for line in in_list:
+            donor, id, chr, pos, _ = line.split()
+            if id not in out_dict:
+                out_dict[id] = []
+                out_file = paths['igv_png'].format(
+                    id=id,
+                    chr=chr,
+                    pos=pos,
+                    donor=donor)
+                outfiles.append(out_file)
+            out_dict[id].append((chr, int(pos), donor))
+
+    for k in out_dict.keys():
+        out_dict[k] = list(reversed(out_dict[k])) 
+
+    if "subw_outputs_dict" in locals() and "ids" in locals():
+        #subw_outputs_dict['igv_batch'] = [paths['igv_group']]
+        subw_outputs_dict['igv_batch'] = outfiles
+
+localrules:
+    build_igv
+
+rule build_igv:
+    output:
+        paths['igv_jar']
+
+    # need to remove dir as it is made by snakemake
+    # clone version of repo
+    # comment checkVersion
+    # gradle build distribution version
+    shell:
+        'rm -rf {paths[igv_dir]}\n'
+        'git clone '
+            'https://github.com/igvteam/igv.git '
+            '{paths[igv_dir]}\n'
+        'cd {paths[igv_dir]}\n'
+        'git checkout 6d04ff2a362dae78cff1ea4e68a7ea8b47268313\n'
+        'sed -i \'s/checkVersion();/\/\/checkVersion();/\' '
+            'src/main/java/org/broad/igv/ui/Main.java\n'
+        './gradlew createDist\n'
+        'cd -'
+        
+rule generate_batch:
+    input:
+        bam=paths['igv_bam'],
+        ref=paths['ref_genome']
+
+    output:
+        temp(paths['igv_bat'])
+
+    group: 'igv_export'
+
+    run:
+        window = config['igv']['window']
+        height = config['igv']['panel_height']
+        sort = config['igv']['sort']
+
+        with open(output[0], 'w') as out:
+            out.write('new\n')
+            out.write(f'genome {input.ref}\n')
+            igv_dir, fname = os.path.split(paths['igv_png'])
+            out.write(f'snapshotDirectory {igv_dir}\n') 
+            out.write(f'load {input.bam}\n') 
+            out.write(f'maxPanelHeight {height}\n')
+
+            for chrm, pos, donor in out_dict[wildcards.id]:
+                out.write(f'goto {chrm}:{pos-window}-{pos+window}\n')
+                out.write('viewaspairs\n')
+                out.write(f'sort {sort}\n')
+                snap = fname.format(id=wildcards.id,
+                                    chr=chrm,
+                                    pos=pos,
+                                    donor=donor)
+                out.write(f'snapshot {snap}\n') 
+
+            out.write('exit')
+
+rule run_igv:
+    input:
+        igv=paths['igv_jar'],
+        bat=paths['igv_bat']
+
+    output:
+        paths['igv_png']
+
+    group:
+        'igv_export'
+
+    conda:
+        paths['igv_env']
+
+    shell:
+        'xvfb-run '
+            '-d '
+            '-e ~/xvfb.err '
+            'java '
+                '-Xmx{config[igv][memory]} '
+                '-jar {input.igv} '
+                '-b {input.bat} '

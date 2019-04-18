@@ -107,3 +107,5 @@ venv.bak/
 *.swp
 .snakemake/
 slurm_out/
+*.svg
+.gradle/

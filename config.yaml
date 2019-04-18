@@ -2,12 +2,13 @@
 main:
     subworkflows:
         # - "GATK-map"
-        - "GATK-bqsr"
+        # - "GATK-bqsr"
         # - "alignstats"
         # - "GATK-map-metrics"
         # - "GATK-genotype"
         # - "GATK-mutect2"
         # - "shearwater"
+        - "igv_batch"
 
 # center: "nwgc"
 # center: "macrogen"

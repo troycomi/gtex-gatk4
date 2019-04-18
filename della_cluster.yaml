@@ -102,3 +102,9 @@ shearwater:
     memory: '6G'
     time: '0-8'
     n: 2
+
+igv_export:
+    jobname: 'igv'
+    memory: '1100M'
+    time: '0-0:10'
+    n: 1

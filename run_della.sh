@@ -5,6 +5,7 @@
 
 module load anaconda3
 conda activate gtex-gatk4
+PATH=$PATH:/usr/licensed/anaconda3/2019.3/bin
 
 #note on fastq_instances: that step creates temporary unzipped
 #fastq files so only run a few to limit disk usage!
@@ -16,6 +17,7 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --mem={cluster.memory} --time={cluster.time} \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
                 --parsable -A eeb" \
+    --use-conda \
     --use-singularity -rp -w 60 -j 250 \
     --resources fastq_instances=5 short_jobs=2\
     --max-jobs-per-second 1
