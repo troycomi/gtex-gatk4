@@ -1,22 +1,38 @@
 ---
+# split the ubam into separate files before
+# running bwa and merge prior to dedup step
+# about 10 million lines per GB of ubam
+map_split_lines: 500000000
 path:
     # # # MAPPING # # #
-    fastq_input: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/\
-                  Fastqs.nobackup/Fastqs_original"
-    fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
-    fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+    fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations\
+                  /Fastqs.nobackup/Fastqs_WGS_original"
+    fastq_R1: "__FASTQ_INPUT__/{id}_R1.fastq.gz"
+    fastq_R2: "__FASTQ_INPUT__/{id}_R2.fastq.gz"
+
+    # fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #               Fastqs.nobackup/Fastqs_original"
+    # fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
+    # fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+
     # only fastq or old bam needs be valid
     # if both exist will use the fastq
     old_bam: "__MAPPING_BASE__/{id}.ubam"
 
     mapping_base: "__DATA_ROOT__/mapping"
     ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
-    marked_bam: "__MAPPING_BASE__/marked_bam/{id}.marked.bam"
-    marked_metric: "__MAPPING_BASE__/marked_bam/{id}.marked.metrics.txt"
-    marked_fastq: "__MAPPING_BASE__/marked_fastq/{id}.marked.fastq"
-    temp_mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.temp.bam"
-    mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bam"
-    mapped_bai: "__MAPPING_BASE__/mapped_bam/{id}.mapped.bai"
+    split_ubam_dir: "__MAPPING_BASE__/ubams/{id}"
+    split_ubam: "__SPLIT_UBAM_DIR__/part_{part}.ubam"
+    marked_bam: "__MAPPING_BASE__/marked_bam/{id}_part_{part}.marked.bam"
+    marked_metric: "__MAPPING_BASE__/marked_bam/\
+                    {id}_part_{part}.marked.metrics.txt"
+    marked_fastq: "__MAPPING_BASE__/marked_fastq/\
+                   {id}_part_{part}.marked.fastq"
+    temp_mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}_part_{part}.temp.bam"
+    mapped_bam: "__MAPPING_BASE__/mapped_bam/{id}_part_{part}.mapped.bam"
+    mapped_bai: "__MAPPING_BASE__/mapped_bam/{id}_part_{part}.mapped.bai"
+    mapped_bam_merged: "__MAPPING_BASE__/merged_bam/{id}.mapped.bam"
+    mapped_bai_merged: "__MAPPING_BASE__/merged_bam/{id}.mapped.bai"
 
     dedup_bam: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam"
     dedup_bai: "__MAPPING_BASE__/dedup_bam/{id}.dedup.bam.bai"
@@ -34,18 +50,18 @@ gatk:
             --ATTRIBUTE_TO_CLEAR=BI
 
     FastqToSam:
-        memory: "4G"
+        memory: "8G"
         options: "-PL=ILLUMINA"
 
     MergeSamFiles:
-        memory: "4G"
+        memory: "8G"
         options: "-SO queryname"
 
     MarkIlluminaAdapters:
-        memory: "4G"
+        memory: "1G"
 
     SamToFastq:
-        memory: "7G"
+        memory: "8G"
         options: >
             --CLIPPING_ATTRIBUTE=XT
             --CLIPPING_ACTION=2
@@ -56,7 +72,7 @@ gatk:
         options: "-M -t 2"
 
     MergeBamAlignment:
-        memory: "7G"
+        memory: "8G"
         options: >
             --CREATE_INDEX=true
             --ADD_MATE_CIGAR=true
@@ -65,5 +81,11 @@ gatk:
             --PRIMARY_ALIGNMENT_STRATEGY=MostDistant
             --ATTRIBUTES_TO_RETAIN=XS
 
+    MergeSamFilesSample:
+        memory: "11G"
+        options: >
+            -SO coordinate
+            --CREATE_INDEX=true
+
     MarkDuplicates:
-        memory: "4G"
+        memory: "11G"

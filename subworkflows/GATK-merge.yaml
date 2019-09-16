@@ -1,0 +1,10 @@
+---
+path:
+    # # # MERGE # # #
+    rehead_bam: "__RECAL_BAM__.{merged}.rehead.bam"
+
+gatk:
+    MergeSamFiles:
+        memory: "1G"
+        options: >
+            --CREATE_INDEX

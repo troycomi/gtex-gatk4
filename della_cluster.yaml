@@ -1,69 +1,83 @@
 ---
 __default__:
-    n: 1
+    n: "{threads}"
     memory: '1G'
     time: '0-2'
-    jobname: "snake"
+    jobname: "{rule}"
 
 fastq_to_ubam:
     n: 2
-    jobname: 'fastq_to_ubam'
-    memory: '3G'
-    time: '0-1'
+    memory: '8G'
+    time: '2-0'
+
+split_ubam:
+    n: 1
+    memory: '400M'
+    time: '2-0'
+
+mark_adapters:
+    n: 1
+    memory: '1G'
+    time: '0-3'
 
 map_fastq:
     jobname: 'map_fastq'
-    time: '0-8'
+    time: '2-0'
     n: 3
-    memory: '18G'
+    memory: '24G'
+
+merge_dedup:
+    jobname: 'merge_dedup'
+    time: '3-0'
+    n: 1
+    memory: '14G'
 
 bqsr:
     jobname: 'bqsr'
+    memory: '6G'
+    time: '6-0'
+
+merge_dup_bam:
+    jobname: 'merge_dup_bam'
     memory: '1G'
-    time: '0-2'
+    time: '0-0:30'
+    n: 3
 
 alignstats:
-    jobname: 'alignstats'
-    memory: '1200M'
-    time: '0-0:10'
+    memory: '2G'
+    time: '0-0:20'
     n: 2
 
 # contains mapping and all haplotype caller runs
 haplotype:
-    jobname: 'haplotype'
     memory: '10G'
     n: 4
     time: '2-0'
 
 db_import:
-    jobname: 'db_import'
     memory: '5G'
     time: '3-0'
 
 genotype_gvcf:
-    jobname: 'genotype_gvcf'
     memory: '5G'
     time: '3-0'
 
 merge_genotype_gvcf:
-    jobname: 'merge_gvcf'
     memory: '2G'
     time: '0-0:30'
 
 sites_only:
-    jobname: 'sites_only'
     memory: '2G'
     time: '1-0'
 
 create_pon:
-    jobname: 'create_pon'
     memory: '9G'
     time: '1-0'
 
 call_variants:
     jobname: 'call_variants'
     memory: '4G'
-    time: '0-8'
+    time: '0-10'
 
 # This is for all files
 filter_variants:
@@ -73,38 +87,31 @@ filter_variants:
     n: 10
 
 variant_recal_indel:
-    jobname: 'variant_recal_indel'
     memory: '2G'
     time: '0-2'
 
 apply_vqsr_indel:
-    jobname: 'apply_vqsr_indel'
     memory: '2G'
     time: '0-1'
 
 variant_recal_snp:
-    jobname: 'variant_recal_snp'
     memory: '2G'
     time: '0-2'
 
 apply_vqsr_snp:
-    jobname: 'apply_vqsr_snp'
     memory: '2G'
     time: '0-1'
 
 map_metrics:
-    jobname: 'map_metrics'
     memory: '4G'
     time: '0-1'
 
 shearwater:
-    jobname: 'shearwater'
     memory: '6G'
     time: '0-8'
     n: 2
 
 igv_export:
-    jobname: 'igv'
     memory: '1100M'
     time: '0-0:10'
     n: 1

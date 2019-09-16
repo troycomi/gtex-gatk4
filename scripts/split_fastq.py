@@ -20,7 +20,7 @@ for l in sys.stdin:
     if step == 0:
         key = l
         key = key.split(' ')[0].split(':')
-        key = '_'.join(key[1:3])
+        key = '_'.join(key[1:4])
         if key not in writers:
             writers[key] = open(
                 f"{fnamebase[0]}_{key}_{fnamebase[1]}", 'w')

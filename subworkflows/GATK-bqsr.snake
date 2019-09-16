@@ -41,11 +41,11 @@ rule bqsr_table:
         'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
             'BaseRecalibrator '
             '-R {paths[ref_genome]} '
-            '-L {paths[exome_intervals]} '
             '--verbosity {config[gatk][verbosity]} '
             '-I {input.bam} '
             '-O {output} '
             '{params} '
+            # '-L {paths[exome_intervals]} '
 
 def get_before_table(wildcards):
     return {'bam': paths['dedup_bam'],
@@ -74,8 +74,8 @@ rule bqsr_bam:
             '-O {output.bam}'
 
 def get_tables(wildcards):
-    return {'before': paths['recal_table'].replace('{type}', 'before'),
-            'after': paths['recal_table'].replace('{type}', 'after')}
+    return {'before': ancient(paths['recal_table'].replace('{type}', 'before')),
+            'after': ancient(paths['recal_table'].replace('{type}', 'after'))}
 
 rule analyze_bqsr:
     input:

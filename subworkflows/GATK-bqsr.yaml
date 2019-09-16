@@ -8,7 +8,7 @@ path:
 
 gatk:
     BQSR:
-        memory: "1G"
+        memory: "6G"
         known_sites:
             "--known-sites {dbsnp}
             --known-sites {mills}

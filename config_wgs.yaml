@@ -3,17 +3,15 @@ main:
     subworkflows:
         # - "GATK-map"
         # - "GATK-bqsr"
-        # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
         # - "GATK-genotype"
-        - "GATK-mutect2"
+        # - "GATK-mutect2"
         # - "shearwater"
         # - "igv_batch"
 
 # center: "nwgc"
 # center: "macrogen"
-# center: "merged"
 center: "all"
 
 path:
@@ -25,7 +23,8 @@ path:
     temp_dir: "/scratch"
 
     # directory to hold all result and input
-    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/Results.nobackup"
+    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                Results_WGS.nobackup"
 
     # Reference with index files
     ref_genome: "/projects/AKEY/akey_vol1/home/selinav/\
@@ -36,7 +35,7 @@ path:
     ref_hapmap: "__REFERENCE_BUNDLE__/hapmap_3.3.b37.vcf"
     ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.b37.vcf"
     ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.b37.vcf"
-    ref_indel: "__REFERENCE_BUNDLE__/1000G_phase1.indels.b37.vcf.ga"
+    ref_indel: "__REFERENCE_BUNDLE__/1000G_phase1.indels.b37.vcf.gz"
     ref_dbsnp: "__REFERENCE_BUNDLE__/dbsnp_138.b37.vcf"
     ref_mills: "__REFERENCE_BUNDLE__/Mills_and_1000G_\
                 gold_standard.indels.b37.vcf.gz"
@@ -50,11 +49,8 @@ path:
 
 
     # tabulated data containing information for each sample
-    sample_details: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/SampInfo/\
-                     sample_details_dups.txt"
-    # listing of duplicates to merge
-    duplicate_pairs: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/SampInfo/\
-                      macrogen_merged_dup_key.txt"
+    sample_details: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
+                     SampInfo/sample_details.txt"
 
     exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
                       Enrichment_targets/\
@@ -81,6 +77,12 @@ path:
                 Supp1kg/Chr{chromosome}"
 
     recal_bam: "__DATA_ROOT__/bqsr/bams/{id}.bqsr.bam"
+    # fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #               Fastqs.nobackup/Fastqs_original"
+    # fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
+    fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations\
+                  /Fastqs.nobackup/Fastqs_WGS_original"
+    fastq_R1: "__FASTQ_INPUT__/{id}_R1.fastq.gz"
 
 gatk:
     verbosity: "ERROR"

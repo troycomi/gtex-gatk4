@@ -12,20 +12,22 @@ path:
     mutect_prior: "__MUTECT_METRICS__/{id}-artifact-prior.tsv"
 
     mutect_pair_name: "set3_stomach"
-    mutect_pairs: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+    mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
                    SampInfo/Sample_Pairs/sample_pairs_set3_stomach.txt"
-    # mutect_pairs: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+    # mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
     #                SampInfo/Sample_Pairs/sample_pairs_set1_esophagus.txt"
-    # mutect_pairs: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/\
+    # mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
     #                SampInfo/Sample_Pairs/sample_pairs_set2_macrogen_dups.txt"
 
     mutect_base: "__DATA_ROOT__/mutect2/__MUTECT_PAIR_NAME__"
     unfiltered_vcf: "__MUTECT_BASE__/calls/{id}.vcf.gz"
     mutect_bam: "__MUTECT_BASE__/calls/{id}_mutect_reassembled.bam"
-    pileup: "__MUTECT_BASE__/filtered/{id}_pileup.table"
-    con_tab: "__MUTECT_BASE__/filtered/{id}_contamination.table"
-    filter_vcf: "__MUTECT_BASE__/filtered/{id}_filtered.vcf.gz"
-    filter_vcf_temp: "__MUTECT_BASE__/filtered/filtered.temp"
+
+    filter_base: "__MUTECT_BASE__/filtered_more"
+    pileup: "__FILTER_BASE__/{id}_pileup.table"
+    con_tab: "__FILTER_BASE__/{id}_contamination.table"
+    filter_vcf: "__FILTER_BASE__/{id}_filtered.vcf.gz"
+    filter_vcf_temp: "__FILTER_BASE__/filtered.temp"
 
 gatk:
     Mutect2_Sites_Only:
@@ -48,5 +50,9 @@ gatk:
 
     Mutect2_Filter:
         memory: "1G"
-        options: >
+        pileup_options: >
             --interval-padding 100
+
+        filter_options: >
+            --unique-alt-read-count 2
+            --min-median-read-position 5

@@ -43,7 +43,7 @@ rule fastq_to_ubam:
                 {input.R1} {output} & \n'
         'zcat {input.R2} | '
             'python {paths[base]}/scripts/split_fastq.py \
-                {input.R2} {output} \n'
+                {input.R2} {output} & \n'
         'wait \n'
         'RG1=($(python {paths[base]}/scripts/get_fastq.py \
             {input.R1} {output} )) \n'
@@ -53,8 +53,8 @@ rule fastq_to_ubam:
         'UBAMS_ARG=() \n'
         'for i in ${{!RG1[@]}}; do \n'
             'TEMP_UBAM=$(dirname ${{RG1[$i]}})/$(basename ${{RG1[$i]}} | '  
-                'cut -d"." -f 1 | cut -d "_" -f 1-3).ubam  \n'
-            'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3 | tr "_" "."i)  \n'
+                'cut -d "_" -f 1-4).ubam  \n'
+            'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3,4 --output-delimiter=".")  \n'
             'gatk --java-options "-Xmx{config[gatk][FastqToSam][memory]}" '
                 'FastqToSam '
                 '-F1=${{RG1[$i]}} '
@@ -77,18 +77,51 @@ rule fastq_to_ubam:
         'rm ${{RG1[@]}} ${{RG2[@]}}  \n'
         'rm ${{TEMP_UBAMS[*]}}'
 
-rule mark_adapters:
+def get_split_names(wildcards):
+    '''
+    return prefix and suffix for split output
+    '''
+    filename = paths['split_ubam'].replace('{id}', wildcards.id)
+    prefix, suffix = filename.split('{part}')
+    return {'prefix': prefix, 'suffix': suffix}
+
+checkpoint split_ubam:
     input:
         paths['ubam']
 
     output:
-        bam=temp(paths['marked_bam']),
-        metric=paths['marked_metric']
+        directory(paths['split_ubam_dir'])
 
+    params:
+        splitnames=get_split_names
+        
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    # make output dir, store header, split sam and convert back to bam
+    shell:
+        "mkdir {output}\n"
+        "samtools view -H {input} > {output}/header.sam\n"
+        "samtools view {input} | "
+        "split "
+            "--lines={config[map_split_lines]} "
+            "--additional-suffix={params.splitnames[suffix]} "
+            "--filter='cat {output}/header.sam - | "
+                "samtools view -Sb - > $FILE' "
+            "- {params.splitnames[prefix]}\n"
+        "rm {output}/header.sam"
+
+
+rule mark_adapters:
+    input:
+        paths['split_ubam']
+
+    output:
+        bam=temp(paths['marked_bam']),
+        metric=temp(paths['marked_metric'])
+
+    singularity:
+        paths['gatk-container']
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][MarkIlluminaAdapters][memory]}" '
@@ -139,7 +172,7 @@ rule map_bam:
 rule merge_bam:
     input:
         bam=paths['temp_mapped_bam'],
-        ubam=paths['ubam']
+        ubam=paths['split_ubam']
 
     output:
         bam=temp(paths['mapped_bam']),
@@ -161,10 +194,57 @@ rule merge_bam:
             '--TMP_DIR={paths[temp_dir]} '
             '{config[gatk][MergeBamAlignment][options]}'
 
+def aggregate_bam_input(wildcards):
+    if not os.path.exists(paths['split_ubam_dir'].format(id=wildcards.id)):
+        checkpoints.split_ubam.get(**wildcards).output[0]
+
+    split_ubam = paths['split_ubam'].replace('{id}', wildcards.id)
+    result = expand(
+            paths['mapped_bam'],
+            id=wildcards.id,
+            part=glob_wildcards(split_ubam).part)
+    return result
+
+def get_ubam_to_delete(wildcards):
+    path = paths['split_ubam'].replace('{id}', wildcards.id)
+    path = path.replace('{part}', '*')
+    return path
+
+rule merge_split_bam:
+    input:
+        aggregate_bam_input
+
+    output:
+        bam=temp(paths['mapped_bam_merged']),
+        bai=temp(paths['mapped_bai_merged'])
+
+    singularity:
+        paths['gatk-container']
+
+    params:
+        ubams=get_ubam_to_delete
+
+    group: 'merge_dedup'
+
+    shell:
+        'BAMS_ARG=()\n'
+        'for bamfile in {input}; do\n'
+            'BAMS_ARG+=(-I $bamfile)\n'
+        'done\n'
+        'gatk --java-options "-Xmx{config[gatk][MergeSamFilesSample][memory]}" '
+            'MergeSamFiles '
+            '--VERBOSITY={config[gatk][verbosity]} '
+            '--ASSUME_SORTED '
+            '-O {output.bam} '
+            '${{BAMS_ARG[*]}} '
+            '{config[gatk][MergeSamFilesSample][options]}\n'
+        'rm {params.ubams} '
+
 rule dedup_bam:
     input:
-        bam=paths['mapped_bam'],
-        bai=paths['mapped_bai']
+        bam=paths['mapped_bam_merged'],
+        bai=paths['mapped_bai_merged'],
+        ubam=paths['ubam']  # this prevents deletion of temp ubam
 
     output:
         bam=protected(paths['dedup_bam']),
@@ -174,7 +254,7 @@ rule dedup_bam:
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    group: 'merge_dedup'
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][MarkDuplicates][memory]}" '

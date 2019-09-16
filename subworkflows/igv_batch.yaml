@@ -4,12 +4,12 @@ path:
     igv_bam: "__RECAL_BAM__"
     # igv_vcf: __DATA_ROOT__/mutect2/set1_esophagus/filtered/{id}_filtered.vcf
     # list of donor, sample, chr, pos to export
-    igv_list: "/tigress/AKEY/akey_vol1/home/selinav/GTEx/Mutect2.nobackup/\
+    igv_list: "/projects/AKEY/akey_vol1/home/selinav/GTEx/Mutect2.nobackup/\
                sample_positions_for_igv_set1_uniq.txt"
     igv_bat: "__DATA_ROOT__/igv/set1_list/{id}.bat"
     igv_png: "__DATA_ROOT__/igv/set1_list/{donor}_{id}_{chr}_{pos}.png"
     # will automatically clone and build into this dir
-    igv_dir: "/tigress/AKEY/akey_vol1/software/igv"
+    igv_dir: "/projects/AKEY/akey_vol1/software/igv"
     igv_jar: "__IGV_DIR__/build/IGV-dist/lib/igv.jar"
     igv_env: "/home/tcomi/projects/gtex-gatk4/subworkflows/igv_env.yml"
 

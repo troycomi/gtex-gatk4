@@ -5,12 +5,24 @@ with open(paths['mutect_pairs'], 'r') as reader:
         tokens = line.split()
         tumor_normal[tokens[0]] = tokens[1]
 
+if config['center'] == 'merged':
+    with open(paths['duplicate_pairs'], 'r') as reader:
+        merge_map = {}
+        reader.readline()  # header
+        for line in reader:
+            tokens = line.split()
+            tumor_normal[tokens[2]] = tumor_normal[tokens[0]]
+            merge_map[tokens[2]] = tokens[0]
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
     output_ids = [id for id in ids if id in tumor_normal]
-    #output_ids = output_ids[0:2]
-    subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
+    subw_outputs_dict['GATK-mutect2'] = expand(paths['unfiltered_vcf'],
                                                id=output_ids)
-    subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
+    subw_outputs_dict['GATK-mutect2'] = expand(paths['mutect_bam'],
+                                               id=output_ids)
+    # subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
+    #                                            id=output_ids)
+    # subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
 
 localrules:
     pon_mutect_args
@@ -90,7 +102,7 @@ rule generate_pon:
 
 rule collect_counts:
     input:
-        paths['recal_bam']
+        ancient(paths['recal_bam'])
 
     output:
         table=paths['mutect_alt'],
@@ -139,12 +151,15 @@ rule learn_model:
 def get_call_input(wildcards):
     detail = sample_details[wildcards.id]
     param = get_call_params(wildcards)
-    result = {'pon': expand(paths['pon'],
+    center = detail.center 
+    if center == 'merged':
+        center = sample_details[merge_map[wildcards.id]].center
+    result = {'pon': ancient(expand(paths['pon'],
                             individual=detail.individual,
-                            center=detail.center),
-            'prior': expand(paths['mutect_prior'], id=wildcards.id),
-            'test': expand(paths['recal_bam'], id=wildcards.id),
-            'normal': expand(paths['recal_bam'], id=param['normal'])}
+                            center=center)),
+            'prior': ancient(expand(paths['mutect_prior'], id=wildcards.id)),
+            'test': ancient(expand(paths['recal_bam'], id=wildcards.id)),
+            'normal': ancient(expand(paths['recal_bam'], id=param['normal']))}
 
     return result
 
@@ -154,11 +169,6 @@ def get_call_params(wildcards):
     strip ending d for nwgc samples
     '''
     test_details = sample_details[wildcards.id]
-    #normal_details = next((detail for detail in sample_details.values()
-    #                       if detail.individual == test_details.individual and
-    #                          detail.center == test_details.center and
-    #                          detail.sample != test_details.sample), None)
-    #if normal_details is None:
     if wildcards.id not in tumor_normal:
         raise ValueError("No matching normal sample found for sample " + 
                          wildcards.id)
@@ -222,6 +232,7 @@ rule filter_variants:
         paths['gatk-container']
 
     group: 'filter_variants'
+    priority: 1
 
     shell:
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
@@ -231,7 +242,7 @@ rule filter_variants:
             '--variant {paths[common_snps]} '
             '--intervals {paths[exome_intervals]} '
             '--verbosity {config[gatk][verbosity]} '
-            '{config[gatk][Mutect2_Filter][options]} \n'
+            '{config[gatk][Mutect2_Filter][pileup_options]} \n'
         'gatk --java-options "-Xmx{config[gatk][Mutect2_Filter][memory]}" '
             'CalculateContamination '
             '--input {output.pileup} '
@@ -243,7 +254,8 @@ rule filter_variants:
             '--contamination-table {output.con_tab} '
             '--output {output.vcf} '
             '--stats /dev/null '
-            '--verbosity {config[gatk][verbosity]} \n'
+            '--verbosity {config[gatk][verbosity]} '
+            '{config[gatk][Mutect2_Filter][filter_options]} \n'
 
 rule group_filter:
     input:
@@ -254,3 +266,4 @@ rule group_filter:
         touch(temp(paths['filter_vcf_temp']))
 
     group: 'filter_variants'
+    priority: 1

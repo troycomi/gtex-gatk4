@@ -1,0 +1,65 @@
+import os
+
+
+with open(paths['duplicate_pairs'], 'r') as reader:
+    reader.readline()  # header
+    dup_pairs = {}
+    for line in reader:
+        tokens = line.split()
+        dup_pairs[tokens[2]] = (tokens[0], tokens[1])
+
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    output_ids = [id for id in ids if id in dup_pairs]
+    subw_outputs_dict['GATK-merge'] = expand(paths['recal_bam'],
+                                             id=output_ids)
+
+paths['rehead_bam'] = paths['recal_bam'] + '.{merged}.rehead.bam'
+
+rule merge_rehead_bam:
+    input:
+        paths['recal_bam']
+
+    output:
+        pipe(paths['rehead_bam'])
+
+    group: 'merge_dup_bam'
+
+    singularity:
+        paths['gatk-container']
+
+    shell:
+        ' samtools view -H {input} |'
+        ' sed "s/SM:[^\\t]*/SM:{wildcards.merged}/" |'
+        ' samtools reheader - {input} > {output}'
+
+def get_dup_bam_input(wildcards):
+    if os.path.exists(paths['recal_bam'].format(id=wildcards.id)):
+        return ''
+    if wildcards.id not in dup_pairs:
+        raise ValueError(f"Unable to build duplicate sample: {wildcards.id}")
+    return expand(paths['rehead_bam'],
+                  id=dup_pairs[wildcards.id],
+                  merged=wildcards.id)
+
+rule merge_dup_bam:
+    input:
+        get_dup_bam_input
+
+    output:
+        paths['recal_bam']
+
+    group: 'merge_dup_bam'
+
+    resources: short_jobs=1
+
+    singularity:
+        paths['gatk-container']
+
+    shell:
+        'gatk --java-options "-Xmx{config[gatk][MergeSamFiles][memory]}" '
+            'MergeSamFiles '
+            '--INPUT {input[0]} '
+            '--INPUT {input[1]} '
+            '--OUTPUT {output} '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '{config[gatk][MergeSamFiles][options]} '

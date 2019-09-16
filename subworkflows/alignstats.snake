@@ -16,5 +16,5 @@ rule alignstats:
         '{paths[alignstats]} '
             '-i {input} '
             '-o {output} '
-            '-t {paths[exome_intervals]} '
-            '{config[alignstats][options]}'
+            '{config[alignstats][options]} '
+            # '-t {paths[exome_intervals]} '

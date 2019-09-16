@@ -18,8 +18,8 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
                 --parsable -A eeb" \
     --use-conda \
-    --use-singularity -rp -w 60 -j 250 \
-    --resources fastq_instances=5 short_jobs=2\
+    --use-singularity -rp -w 120 -j 250 \
+    --resources fastq_instances=2 short_jobs=2\
     --max-jobs-per-second 1
 #done
     #--restart-times 1

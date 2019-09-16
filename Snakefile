@@ -2,6 +2,7 @@ from scripts.clean_config import clean_config_paths, join_config_paths
 from scripts.get_samples import get_samples
 import os
 
+#configfile: 'config_wgs.yaml'
 configfile: 'config.yaml'
 
 paths = config['path']
@@ -18,8 +19,17 @@ ids = glob_wildcards(paths['recal_bam']).id
 
 sample_details = get_samples(paths['sample_details'])
 
+if config['center'] == 'all':
+    pass
+
+elif config['center'] == 'merged':
+    # need to retain details for mutect, but change ids
+    ids = [detail.sample
+           for detail in sample_details.values()
+           if detail.center == config['center']]
+
 # remove samples not matching the chosen center
-if config['center'] != 'all':
+else:
     sample_details = {sample: detail
                       for sample, detail in sample_details.items()
                       if detail.center == config['center']}
@@ -30,7 +40,6 @@ ids = [id for id in ids if id in sample_details]
 ## keep only samples from second batch (with b as last char)
 #ids = [id for id in ids if id[-1] == 'b']
 
-#ids = ids[0:2]
 print(f"found {len(ids)} samples to process")
 
 subworkflows = config['main']['subworkflows']
