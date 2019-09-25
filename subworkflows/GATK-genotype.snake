@@ -1,31 +1,46 @@
 import os
-from scripts.split_bed import count_chunks
 
 chroms = list(range(1,23))
+# chroms = [22]
 if "subw_outputs_dict" in locals() and "ids" in locals():
-#    subw_outputs_dict['GATK-genotype'] = expand(paths['name_map'],
-#                                                chromosome=chroms[0])
-
-    recal = [paths['snp_tranche']]
-    if all([os.path.exists(f) for f in recal]):
-        subw_outputs_dict['GATK-genotype'] = [paths['indel_vcf']]
-    else:
-        subw_outputs_dict['GATK-genotype'] = recal
-
-# determine number of chunks for each chromosome
-chunks = {}
-for chrom in chroms:
-    chunks[str(chrom)] = count_chunks(paths['chrom_intervals']\
-                                    .format(chromosome=chrom),
-                                 config['gatk']['GenotypeGVCFs']['chunk_size'])
+    subw_outputs_dict['GATK-genotype'].extend(
+         expand(paths['haplotype_raw'],
+                chromosome=chroms,
+                id=ids.keys()))
+    # subw_outputs_dict['GATK-genotype'].extend(
+    #     expand(paths['indel_vcf'],
+    #            chromosome=chroms))
 
 localrules:
     name_map
 
+rule index_bam:
+    input: "{sample}.bam"
+    output: "{sample}.bam.bai"
+
+    singularity:
+        paths['gatk-container']
+
+    # resources:
+    #     short_jobs=1
+
+    shell:
+        'samtools sort -m 3G {input} {input}.sort \n'
+        'mv {input}.sort.bam {input} \n'
+        'samtools index {input} {output} '
+
+def haplotype_input(wildcards):
+    return {
+        'bam': ancient(ids[wildcards.id].format(
+            id=wildcards.id, chromosome=wildcards.chromosome)),
+        'bai': ancient((ids[wildcards.id] + '.bai').format(
+            id=wildcards.id, chromosome=wildcards.chromosome)),
+            }
+
+
 rule haplotype_caller:
     input:
-        bam=ancient(paths['recal_bam']),
-        interval=ancient(paths['chrom_intervals'])
+        unpack(haplotype_input)
 
     output:
         vcf=paths['haplotype_raw'],
@@ -34,15 +49,12 @@ rule haplotype_caller:
     singularity:
         paths['gatk-container']
 
-    group: 'haplotype'
-
     shell:
         'gatk --java-options "-Xmx{config[gatk][HaplotypeCaller][memory]}" '
             'HaplotypeCaller  '
             '--verbosity {config[gatk][verbosity]} '
             '-R {paths[ref_genome]} '
             '-I {input.bam} '
-            '-L {input.interval} '
             '-O {output.vcf} '
             '{config[gatk][HaplotypeCaller][options]}'
 
@@ -104,31 +116,16 @@ rule db_import:
             '--genomicsdb-workspace-path {output} '
             '{config[gatk][GenomicsDBImport][options]} '
 
-rule split_chunk:
-    input:
-        region=paths['chrom_intervals']
-
-    output:
-        temp(paths['genotype_chunk'])
-
-    group: 'genotype_gvcf'
-
-    shell:
-        'python {paths[base]}/scripts/split_bed.py '
-            '{input.region} '
-            '{config[gatk][GenotypeGVCFs][chunk_size]} '
-            '{wildcards.chunk} '
-            '> {output} '
-
-
 rule genotype_gvcf:
     input:
         db=paths['genomics_db'],
-        intervals=paths['genotype_chunk']
 
     output:
-        vcf=temp(paths['genotype_gvcf_chunk']),
-        tbi=temp(paths['genotype_tbi_chunk'])
+        vcf=paths['genotype_vcf'],
+        tbi=paths['genotype_tbi']
+
+    params:
+        interval=lambda wildcards: f'{wildcards.chromosome}'
 
     singularity:
         paths['gatk-container']
@@ -140,94 +137,11 @@ rule genotype_gvcf:
             'GenotypeGVCFs '
             '--verbosity {config[gatk][verbosity]} '
             '-R {paths[ref_genome]} '
-            '-L {input.intervals} '
+            '-L {params.interval} '
             '--variant gendb://{input.db} '
             '-O {output.vcf} '
             '{config[gatk][GenotypeGVCFs][options]} '
             '2>/dev/null'
-
-def get_chromosome_chunks(wildcards):
-    return {"gvcfs": expand(paths['genotype_gvcf_chunk'],
-                            chromosome=wildcards.chromosome,
-                            chunk=range(chunks[wildcards.chromosome])),
-            "idxs": expand(paths['genotype_tbi_chunk'],
-                            chromosome=wildcards.chromosome,
-                            chunk=range(chunks[wildcards.chromosome]))}
-
-rule vcf_list_chunks:
-    input:
-        unpack(get_chromosome_chunks),
-
-    output:
-        vcfList=temp(paths['genotype_list'])
-
-    group: 'merge_genotype_gvcf'
-
-    run:
-        with open(output[0], 'w') as writer:
-            for f in input.gvcfs:
-                writer.write(f + "\n")
-    
-rule merge_chunk_gvcf:
-    input:
-        unpack(get_chromosome_chunks),
-        vcfList=paths['genotype_list']
-
-    output:
-        vcf=paths['genotype_gvcf'],
-        tbi=paths['genotype_tbi']
-
-    singularity:
-        paths['gatk-container']
-
-    group: 'merge_genotype_gvcf'
-
-    shell:
-        'gatk --java-options "-Xmx{config[gatk][MergeVcfs][memory]}" '
-            'MergeVcfs '
-            '--VERBOSITY {config[gatk][verbosity]} '
-            '--INPUT {input.vcfList} '
-            '--OUTPUT {output.vcf} '
-
-def get_chromosomes(wildcards):
-    return {"gvcfs": expand(paths['genotype_gvcf'],
-                            chromosome=chroms),
-            "idxs": expand(paths['genotype_tbi'],
-                            chromosome=chroms)}
-
-rule vcf_list_chroms:
-    input:
-        unpack(get_chromosomes),
-
-    output:
-        vcfList=temp(paths['chromosome_list'])
-
-    group: 'merge_genotype_gvcf'
-
-    run:
-        with open(output[0], 'w') as writer:
-            for f in input.gvcfs:
-                writer.write(f + "\n")
-    
-rule merge_chromosome_gvcf:
-    input:
-        unpack(get_chromosomes),
-        vcfList=paths['chromosome_list']
-
-    output:
-        vcf=paths['vqsr_merged_vcf'],
-
-    singularity:
-        paths['gatk-container']
-
-    group: 'merge_genotype_gvcf'
-
-    shell:
-        'gatk --java-options "-Xmx{config[gatk][MergeVcfs][memory]}" '
-            'MergeVcfs '
-            '--VERBOSITY {config[gatk][verbosity]} '
-            '--INPUT {input.vcfList} '
-            '--OUTPUT {output.vcf} '
 
 def get_snp_options(wildcards):
     return config['gatk']['VariantRecalibrator']['options'].format(
@@ -239,7 +153,7 @@ def get_snp_options(wildcards):
 rule variant_recal_snp:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['vqsr_merged_vcf'],
+        vcf=paths['genotype_vcf'],
 
     output:
         recal=paths['snp_recal'],
@@ -266,7 +180,7 @@ rule variant_recal_snp:
 rule apply_vqsr_snp:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['vqsr_merged_vcf'],
+        vcf=paths['genotype_vcf'],
         recal=paths['snp_recal'],
         tranche=paths['snp_tranche'],
 

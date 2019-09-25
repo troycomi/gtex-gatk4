@@ -11,7 +11,6 @@ PATH=$PATH:/usr/licensed/anaconda3/2019.3/bin
 #fastq files so only run a few to limit disk usage!
 #short_jobs are for jobs < 2 hours which are spawned in large numbers. 
 #That limits how many jobs are submitted at once to keep the queue clear
-#for i in {1..10}; do
 snakemake --cluster-config 'della_cluster.yaml' \
     --cluster "sbatch --cpus-per-task={cluster.n} \
                 --mem={cluster.memory} --time={cluster.time} \
@@ -20,8 +19,9 @@ snakemake --cluster-config 'della_cluster.yaml' \
     --use-conda \
     --use-singularity -rp -w 120 -j 250 \
     --resources fastq_instances=2 short_jobs=2\
-    --max-jobs-per-second 1
-#done
+    --max-jobs-per-second 1\
+    --rerun-incomplete\
+    
     #--restart-times 1
     #--dag | dot -Tsvg > dag.svg
     #--verbose \

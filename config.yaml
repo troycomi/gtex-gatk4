@@ -6,26 +6,34 @@ main:
         # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
-        # - "GATK-genotype"
-        - "GATK-mutect2"
+        - "GATK-genotype"
+        # - "GATK-mutect2"
         # - "shearwater"
         # - "igv_batch"
 
-# center: "nwgc"
-# center: "macrogen"
-# center: "merged"
-center: "all"
-
 path:
-    gatk-container: "docker://broadinstitute/gatk:4.1.0.0"
+    gatk-container: "docker://broadinstitute/gatk:4.1.3.0"
     gatk3-container: "docker://broadinstitute/gatk3:3.8-1"
     bioconductor-container: "docker://quay.io/\
                              biocontainers/bioconductor-deepsnv:\
                              1.28.0--r351hf484d3e_0"
     temp_dir: "/scratch"
 
-    # directory to hold all result and input
-    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/Results.nobackup"
+    bam_pattern: "{id}/{id}.chr{chromosome}.bam"
+
+    input_dirs:
+        - /tigress/AKEY/akey_vol2/serenatu/data/tibet/WGS/chr/
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/Ricaut/"
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/Vernot/"
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/SGDP/"
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/Sanger/"
+
+    # directory to hold all result
+    data_root: "/projects/AKEY/akey_vol2/serenatu/data/variant.calling"
 
     # Reference with index files
     ref_genome: "/projects/AKEY/akey_vol1/home/selinav/\
@@ -49,38 +57,9 @@ path:
                   GATK_Mutect2_reference_bundle/small_exac_common_3_b37.vcf.gz"
 
 
-    # tabulated data containing information for each sample
-    sample_details: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/SampInfo/\
-                     sample_details_dups.txt"
-    # listing of duplicates to merge
-    duplicate_pairs: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/SampInfo/\
-                      macrogen_merged_dup_key.txt"
-
-    exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-                      Enrichment_targets/\
-                      union_nwgc_macrogen_allchr_XY.bed"
-    # exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-    #                   Enrichment_targets/Macrogen/\
-    #                   primary_target_regions_allchr_XY.bed"
-    # exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-    #                   Enrichment_targets/NWGC/\
-    #                   primary_target_regions_allchr_XY.bed
-
-    # supplemental files for haplotype calling
-    chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-                      Enrichment_targets/Union_ByChrom/chr{chromosome}.bed"
-    # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-    #                   Enrichment_targets/Macrogen/ByChrom/chr{chromosome}.bed"
-    # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-    #                     Enrichment_targets/NWGC/MoreFiles/PrimaryTarget/\
-    #                     Unpadded/IntFormat/\
-    #                     primary_target_regions_chr{chromosome}.bed"
-
     1000G_dir: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
                 VariantCalling.nobackup/RawVariants/BP_resolution/\
                 Supp1kg/Chr{chromosome}"
-
-    recal_bam: "__DATA_ROOT__/bqsr/bams/{id}.bqsr.bam"
 
 gatk:
     verbosity: "ERROR"

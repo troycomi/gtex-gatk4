@@ -9,37 +9,20 @@ paths = config['path']
 paths = clean_config_paths(paths)
 paths['base'] = os.getcwd()
 
-if 'recal_bam' not in paths:
-    configfile: paths['base'] + '/subworkflows/GATK-bqsr.yaml'
-    paths = join_config_paths(paths, config['path'])
-
+ids = {}
+valid_chromosomes = [str(c) for c in range(1,23)]
 # sample ids to run workflow with
-#ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
-ids = glob_wildcards(paths['recal_bam']).id
+for dirname in paths['input_dirs']:
+    wc = glob_wildcards(dirname + paths['bam_pattern'].split('/')[1])  # strip leading id dir
+    for chrom in set(wc.chromosome):
+        if chrom not in valid_chromosomes:
+            #raise ValueError(f'Unexpected chromosome {chrom} in {dirname}')
+            pass
+    for id in set([w.split('/')[1] for w in wc.id]):
+        ids[id] = dirname + paths['bam_pattern']
 
-sample_details = get_samples(paths['sample_details'])
-
-if config['center'] == 'all':
-    pass
-
-elif config['center'] == 'merged':
-    # need to retain details for mutect, but change ids
-    ids = [detail.sample
-           for detail in sample_details.values()
-           if detail.center == config['center']]
-
-# remove samples not matching the chosen center
-else:
-    sample_details = {sample: detail
-                      for sample, detail in sample_details.items()
-                      if detail.center == config['center']}
-
-
-## remove ids not found in sample details
-ids = [id for id in ids if id in sample_details]
-## keep only samples from second batch (with b as last char)
-#ids = [id for id in ids if id[-1] == 'b']
-
+# i = list(ids.keys())[0]
+# ids = {i: ids[i]}
 print(f"found {len(ids)} samples to process")
 
 subworkflows = config['main']['subworkflows']

@@ -1,6 +1,8 @@
 def clean_config_paths(path):
     # replace all keys at start with substitution
     for key, value in path.items():
+        if isinstance(value, list):
+            continue
         seen_keys = set(key)
         toks = value.split('/')
         while toks[0][0:2] == '__' and toks[0][-2:] == '__':
@@ -15,6 +17,8 @@ def clean_config_paths(path):
 
     # iterate again checking for inner variables
     for key, value in path.items():
+        if isinstance(value, list):
+            continue
         toks = value.split('/')
         for i in range(len(toks)):
             if toks[i][0:2] == '__' and toks[i][-2:] == '__':

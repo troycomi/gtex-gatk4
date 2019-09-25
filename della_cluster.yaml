@@ -48,11 +48,16 @@ alignstats:
     time: '0-0:20'
     n: 2
 
-# contains mapping and all haplotype caller runs
-haplotype:
-    memory: '10G'
-    n: 4
-    time: '2-0'
+index_bam:
+    memory: '6G'
+    n: 1
+    time: '0-4'
+
+haplotype_caller:
+    jobname: 'haplotype'
+    memory: '8G'
+    n: 1
+    time: '0-12'
 
 db_import:
     memory: '5G'
