@@ -1,0 +1,180 @@
+'''
+Downloads and splits bam files from sgdp dataset
+'''
+
+import os
+
+chroms = list(range(1,23))
+ftp_links = {}
+count = 0
+ignore = [
+    'LP6005441-DNA_A09',  # contaminated
+    ]
+with open(paths['sgdp_ftp'], 'r', errors='ignore') as reader:
+    for line in reader:
+        if line[0] == '#':  # header
+            continue
+        tokens = line.split()
+        if tokens[2] not in ids and tokens[2] not in ignore:
+            ftp_links[tokens[2]] = tokens[4]
+            ids[tokens[2]] = paths['sgdp_chroms']
+        else:
+            count += 1
+
+print(f'{len(ftp_links)} files to download')
+print(f'{count} files found')
+
+# inds = list(ftp_links.keys())[0:3]
+# ftp_links = {i: ftp_links[i] for i in inds}
+# ids = {i: ids[i] for i in inds}
+
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['SGDP-download'].extend(
+         expand(paths['sgdp_temp'],
+                id=ftp_links.keys()))
+
+localrules:
+    sgdp_download_bam,
+    sgdp_download_md5,
+    sgdp_download_bai,
+    move_bai
+
+def get_ftp(wildcards):
+    result = {
+        'bam': ftp_links[wildcards.id],
+        'bai': ftp_links[wildcards.id] + '.bai',
+        'md5_link': build_md5(ftp_links[wildcards.id]),
+        'temp_bam': paths['sgdp_base_dir_temp'].format(id=wildcards.id),
+        'temp_bai': paths['sgdp_base_bai_temp'].format(id=wildcards.id),
+        }
+    result['bam'] = build_aspera(result['bam'], result['temp_bam'])
+    return result
+
+def build_md5(link):
+    tokens = link.split('/')
+    tokens[-1] = tokens[-2] + '.md5'
+    return '/'.join(tokens)
+
+def build_aspera(link, path):
+    link = link.replace('ftp.sra.ebi.ac.uk', 'era-fasp@fasp.sra.ebi.ac.uk:')
+    return config['ascp_command'].format(
+        ascp=paths['ascp'],
+        aspera_ssh=paths['aspera_ssh'],
+        source=link,
+        target=path)
+
+rule sgdp_download_md5:
+    output:
+        temp(paths['sgdp_base_md5'])
+
+    params:
+        links=get_ftp
+
+    shell:
+        'wget -qc -O {output} {params.links[md5_link]} \n'
+
+def check_download_md5(wildcards):
+    if wildcards.id not in ftp_links:
+        return ''
+    else:
+        return paths['sgdp_base_md5'].format(id=wildcards.id)
+
+rule sgdp_download_bam:
+    input:
+        check_download_md5
+
+    output:
+        bam=temp(paths['sgdp_base_bam'])
+
+    params:
+        links=get_ftp
+
+    resources:
+        aspera_downloads=1
+
+    shell:
+        # Note, initially download to temp locations so we can restart
+        # otherwise snakemake would remove outputs of failed jobs
+        '{params.links[bam]} \n'
+        'md5sum --check --quiet '
+            '<(awk \'/.bam$/{{$2 = "{params.links[temp_bam]}"; print $0}}\' {input}) \n'
+        'mv {params.links[temp_bam]} {output[bam]}'
+
+# this tries to run first, if link doesn't exist will still succeed with
+# an empty file
+checkpoint sgdp_download_bai:
+    input:
+        check_download_md5
+
+    output:
+        bai=temp(paths['sgdp_base_bai_temp'])
+
+    params:
+        links=get_ftp
+
+    shell:
+        'wget -qc -O {params.links[temp_bai]} {params.links[bai]} || exit 0\n'
+        'md5sum --check --quiet '
+            '<(awk \'/.bai$/{{$2 = "{params.links[temp_bai]}"; print $0}}\' {input}) \n'
+
+# run if download failed
+rule sgdp_index:
+    input:
+        paths['sgdp_base_bam']
+    output:
+        temp(paths['sgdp_base_bai_sam'])
+    singularity:
+        paths['gatk-container']
+    shell:
+        'samtools index {input} {output} '
+
+# check bai result based on filesize
+def check_bai_download(wildcards):
+    # checkpoints.sgdp_download_bai.get(id=wildcards.id).output[0]
+    fpath = paths['sgdp_base_bai_temp'].format(id=wildcards.id)
+    if os.path.isfile(fpath) and os.path.getsize(fpath) > 0:
+        return fpath
+    else:
+        return paths['sgdp_base_bai_sam'].format(id=wildcards.id)
+    
+rule move_bai:
+    input: check_bai_download
+    output: temp(paths['sgdp_base_bai'])
+    shell: 'cp {input} {output}'  # temp removes input
+
+def get_chrom_split(wildcards):
+    return {
+        'bam': paths['sgdp_base_bam'].format(id=wildcards.id),
+        'bai': paths['sgdp_base_bai'].format(id=wildcards.id),
+        }
+
+rule sgdp_chrom_split:
+    input:
+        unpack(get_chrom_split)
+
+    output:
+        paths['sgdp_chroms']
+
+    params:
+        lambda wc: f'{wc.chromosome}'
+
+    singularity:
+        paths['gatk-container']
+
+    group:
+        'sgdp_chrom_split_group'
+
+    shell:
+        'samtools view -hb {input.bam} {params} > {output}'
+
+rule group_sgdp_chrom_split:
+    input:
+        expand(
+            paths['sgdp_chroms'].replace('{id}', '{{id}}'),
+            chromosome=chroms)
+
+    output:
+        touch(paths['sgdp_temp'])
+
+    group:
+        'sgdp_chrom_split_group'

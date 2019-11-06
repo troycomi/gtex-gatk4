@@ -1,0 +1,28 @@
+---
+path:
+    # # # SGDP DOWNLOAD # # #
+    # aspera
+    aspera_base: '/home/tcomi/.aspera'
+    ascp: '__ASPERA_BASE__/cli/bin/ascp'
+    aspera_ssh: '__ASPERA_BASE__/cli/etc/asperaweb_id_dsa.openssh'
+    # from https://sharehost.hms.harvard.edu/genetics/reich_lab/sgdp/ena.ftp.pointers.txt
+    sgdp_ftp: '/home/tcomi/projects/gatk-stucci/ena.ftp.pointers.txt'
+
+    sgdp_base_dir_temp: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                         evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.srt.aln.bam"
+    sgdp_base_bai_temp: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                         evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.srt.aln.bam.bai"
+    sgdp_base_bai_sam: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                        evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.samtools.bam.bai"
+    sgdp_base_bam: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                    evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.bam"
+    sgdp_base_bai: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                    evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.bam.bai"
+    sgdp_base_md5: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                    evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.md5"
+    sgdp_chroms: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                  evolbio.ut.ee/PNG_bams2/SGDP/{id}/{id}.chr{chromosome}.bam"
+    sgdp_temp: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                evolbio.ut.ee/PNG_bams2/SGDP/{id}/split.temp"
+
+ascp_command: '{ascp} -qT -P33001 -k1 -i {aspera_ssh} {source} {target}'

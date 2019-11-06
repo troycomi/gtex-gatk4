@@ -1,0 +1,64 @@
+'''
+Downloads and verifies bam files from igdp dataset
+'''
+
+# get ids from sample file
+with open(paths['igdp_samples'], 'r') as samples:
+    igdp_ids = [line.strip() for line in samples]
+
+#igdp_ids = igdp_ids[:2]
+chroms = list(range(1,23))
+#chroms = [22]
+
+igdp_ids = [id for id in igdp_ids if id not in ids]
+ids.update({id: paths['igdp_bam_target'] for id in igdp_ids})
+
+print(f'{len(igdp_ids)} bams left to download from IGDB')
+
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['IGDP-download'].extend(
+         expand(paths['igdp_bam_target'],
+                id=igdp_ids,
+                chromosome=chroms))
+
+localrules:
+    igdp_download_bam,
+    igdp_download_md5
+
+def download_bam_links(wildcards):
+    return {
+        'link': paths['igdp_bam_url'].format(
+            id=wildcards.id, chromosome=wildcards.chromosome),
+        'temp_bam': paths['igdp_bam_temp'].format(
+            id=wildcards.id, chromosome=wildcards.chromosome)
+        }
+
+rule igdp_download_bam:
+    input: paths['igdp_md5_target']
+    output: paths['igdp_bam_target']
+    priority: 1
+
+    params:
+        links=download_bam_links
+
+    resources:
+        wget_downloads=1
+
+    shell:
+        'wget -c -nv '
+            '-O {params.links[temp_bam]} {params.links[link]} \n'
+        'md5sum --check --quiet '
+            '<(awk \'{{ print $1 "\\t{params.links[temp_bam]}" }}\' {input}) \n'
+        'mv {params.links[temp_bam]} {output}'
+
+rule igdp_download_md5:
+    output: temp(paths['igdp_md5_target'])
+    params:
+        link=lambda wc: paths['igdp_md5_url'].format(id=wc.id, chromosome=wc.chromosome)
+
+    resources:
+        wget_downloads=1
+
+    shell:
+        'wget -cq '
+            '-O {output} {params.link}'

@@ -15,8 +15,8 @@ localrules:
     name_map
 
 rule index_bam:
-    input: "{sample}.bam"
-    output: "{sample}.bam.bai"
+    input: ancient("{dir}/{id}.chr{chromosome}.bam")
+    output: "{dir}/{id}.chr{chromosome}.bam.bai"
 
     singularity:
         paths['gatk-container']

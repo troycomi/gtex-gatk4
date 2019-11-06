@@ -45,10 +45,12 @@ gatk:
         memory: "4G"
         options: >-
             --use-new-qual-calculator
+            --include-non-variant-sites
 
     GenomicsDBImport:
         memory: "4G"
         options: >
+            --consolidate
             --batch-size 50
 
     MergeVcfs:

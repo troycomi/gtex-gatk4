@@ -1,0 +1,21 @@
+---
+
+path:
+    # # # IGDP DOWNLOAD # # #
+    # from https://evolbio.ut.ee/IGDP/bams/2/ parsing sample names
+    igdp_samples: '/home/tcomi/projects/gatk-stucci/igdp-samples.txt'
+
+    igdp_md5_url: "https://evolbio.ut.ee/IGDP/bams/{chromosome}/\
+                   {id}_chr{chromosome}_merge_remdup.bam.md5"
+    igdp_bam_url: "https://evolbio.ut.ee/IGDP/bams/{chromosome}/\
+                   {id}_chr{chromosome}_merge_remdup.bam"
+
+    igdp_bam_temp: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                    evolbio.ut.ee/PNG_bams2/IGDP/{id}/\
+                    {id}.chr{chromosome}.bam_temp"
+    igdp_md5_target: "/scratch/tcomi/\
+                      {id}.chr{chromosome}.bam.md5"
+
+    igdp_bam_target: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+                      evolbio.ut.ee/PNG_bams2/IGDP/{id}/\
+                      {id}.chr{chromosome}.bam"

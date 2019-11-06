@@ -18,11 +18,12 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --parsable -A eeb" \
     --use-conda \
     --use-singularity -rp -w 120 -j 250 \
-    --resources fastq_instances=2 short_jobs=2\
-    --max-jobs-per-second 1\
-    --rerun-incomplete\
+    --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 wget_downloads=30 \
+    --max-jobs-per-second 1 \
+    --rerun-incomplete \
+    #--keep-going
+    #--restart-times 1 \
     
-    #--restart-times 1
     #--dag | dot -Tsvg > dag.svg
     #--verbose \
 

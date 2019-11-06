@@ -5,6 +5,22 @@ __default__:
     time: '0-2'
     jobname: "{rule}"
 
+sgdp_chrom_split:
+    n: 1
+    memory: '500M'
+    time: '0-1'
+
+sgdp_chrom_split_group:
+    jobname: "group_split"
+    n: 3
+    memory: '1G'
+    time: '0-2'
+
+sgdp_index:
+    memory: '1G'
+    n: 1
+    time: '0-2'
+
 fastq_to_ubam:
     n: 2
     memory: '8G'
@@ -49,15 +65,15 @@ alignstats:
     n: 2
 
 index_bam:
-    memory: '6G'
+    memory: '4G'
     n: 1
-    time: '0-4'
+    time: '0-1:30'
 
 haplotype_caller:
     jobname: 'haplotype'
     memory: '8G'
     n: 1
-    time: '0-12'
+    time: '0-6'
 
 db_import:
     memory: '5G'
