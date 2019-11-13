@@ -64,7 +64,7 @@ onstart:
 
 onerror:
     print("Error! Mailing log...")
-    shell("mail -s 'gatk-stucci error' tcomi@princeton.edu <(tail -n 100 {log})")
+    shell("echo 'Check error log' | mail -s 'gatk-stucci error' tcomi@princeton.edu")
     print("Done")
 
 localrules:

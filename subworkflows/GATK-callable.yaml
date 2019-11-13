@@ -1,0 +1,10 @@
+---
+path:
+    # # # CALLABLE # # #
+    sub_callable: "__DATA_ROOT__/callable_bases"
+
+gatk:
+    HaplotypeCaller:
+        memory: "7G"
+        options: >-
+            --genotyping-mode DISCOVERY

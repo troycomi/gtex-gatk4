@@ -1,7 +1,22 @@
 import os
+from slurm_scrub.predictor import Predictor
+
+
+predictor = Predictor('/home/tcomi/test.json')
+
+def est_resource(job, inputs, resource, default):
+    try:
+        result = predictor.estimate(job,
+                                    sum([os.path.getsize(i) for i in inputs]),
+                                    resource, default)
+    except:
+        print(f'Error in {job} {resource} {default} for {inputs}')
+        raise Exception
+    return result
 
 chroms = list(range(1,23))
 # chroms = [22]
+print(f'in genotype, {len(ids)} ids')
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-genotype'].extend(
          expand(paths['haplotype_raw'],
@@ -21,8 +36,10 @@ rule index_bam:
     singularity:
         paths['gatk-container']
 
-    # resources:
-    #     short_jobs=1
+    resources:
+        mem=lambda wildcards, input: est_resource('index_bam', input, 'mem', 4000),
+        time=lambda wildcards, input: est_resource('index_bam', input, 'time', 90),
+        short_jobs=lambda wildcards, input: est_resource('index_bam', input, 'short_jobs', 0),
 
     shell:
         'samtools sort -m 3G {input} {input}.sort \n'
@@ -45,6 +62,11 @@ rule haplotype_caller:
     output:
         vcf=paths['haplotype_raw'],
         idx=paths['haplotype_idx']
+
+    resources:
+        mem=lambda wildcards, input: est_resource('haplotype', input, 'mem', 8000),
+        time=lambda wildcards, input: est_resource('haplotype', input, 'time', 360),
+        short_jobs=lambda wildcards, input: est_resource('haplotype', input, 'short_jobs', 0),
 
     singularity:
         paths['gatk-container']

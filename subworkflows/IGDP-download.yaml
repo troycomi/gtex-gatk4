@@ -2,6 +2,7 @@
 
 path:
     # # # IGDP DOWNLOAD # # #
+    aria: '/home/tcomi/.local/aria2-1.35.0/src/aria2c'
     # from https://evolbio.ut.ee/IGDP/bams/2/ parsing sample names
     igdp_samples: '/home/tcomi/projects/gatk-stucci/igdp-samples.txt'
 

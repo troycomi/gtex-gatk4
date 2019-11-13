@@ -13,13 +13,13 @@ chroms = list(range(1,23))
 igdp_ids = [id for id in igdp_ids if id not in ids]
 ids.update({id: paths['igdp_bam_target'] for id in igdp_ids})
 
-print(f'{len(igdp_ids)} bams left to download from IGDB')
+print(f'{len(igdp_ids)} samples left to download from IGDB')
 
-if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['IGDP-download'].extend(
-         expand(paths['igdp_bam_target'],
-                id=igdp_ids,
-                chromosome=chroms))
+# if "subw_outputs_dict" in locals() and "ids" in locals():
+#     subw_outputs_dict['IGDP-download'].extend(
+#          expand(paths['igdp_bam_target'],
+#                 id=igdp_ids,
+#                 chromosome=chroms))
 
 localrules:
     igdp_download_bam,
@@ -42,11 +42,11 @@ rule igdp_download_bam:
         links=download_bam_links
 
     resources:
-        wget_downloads=1
+        aria_downloads=1
 
     shell:
-        'wget -c -nv '
-            '-O {params.links[temp_bam]} {params.links[link]} \n'
+        '{paths[aria]} -c -q -d / '
+            '-o {params.links[temp_bam]} {params.links[link]} \n'
         'md5sum --check --quiet '
             '<(awk \'{{ print $1 "\\t{params.links[temp_bam]}" }}\' {input}) \n'
         'mv {params.links[temp_bam]} {output}'
@@ -57,8 +57,8 @@ rule igdp_download_md5:
         link=lambda wc: paths['igdp_md5_url'].format(id=wc.id, chromosome=wc.chromosome)
 
     resources:
-        wget_downloads=1
+        aria_downloads=1
 
     shell:
-        'wget -cq '
-            '-O {output} {params.link}'
+        '{paths[aria]} -c -q -d / '
+            '-o {output} {params.link}'

@@ -13,12 +13,12 @@ PATH=$PATH:/usr/licensed/anaconda3/2019.3/bin
 #That limits how many jobs are submitted at once to keep the queue clear
 snakemake --cluster-config 'della_cluster.yaml' \
     --cluster "sbatch --cpus-per-task={cluster.n} \
-                --mem={cluster.memory} --time={cluster.time} \
+                --mem={resources.mem}M --time={resources.time} \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
                 --parsable -A eeb" \
     --use-conda \
     --use-singularity -rp -w 120 -j 250 \
-    --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 wget_downloads=30 \
+    --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 aria_downloads=20 \
     --max-jobs-per-second 1 \
     --rerun-incomplete \
     #--keep-going

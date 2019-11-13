@@ -1,0 +1,25 @@
+import os
+from slurm_scrub.predictor import Predictor
+
+
+predictor = Predictor('/home/tcomi/test.json')
+
+def est_resource(job, inputs, resource, default):
+    try:
+        result = predictor.estimate(job,
+                                    sum([os.path.getsize(i) for i in inputs]),
+                                    resource, default)
+    except:
+        print(f'Error in {job} {resource} {default} for {inputs}')
+        raise Exception
+    return result
+
+chroms = list(range(1,23))
+
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-callable'].extend(
+         expand(paths['haplotype_raw'],
+                chromosome=chroms,
+                id=ids.keys()))
+
+

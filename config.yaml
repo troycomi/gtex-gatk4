@@ -25,17 +25,17 @@ path:
     bam_pattern: "{id}/{id}.chr{chromosome}.bam"
 
     input_dirs:
-        - /tigress/AKEY/akey_vol2/serenatu/data/tibet/WGS/chr/
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/Ricaut/"
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/Vernot/"
+        # - /tigress/AKEY/akey_vol2/serenatu/data/tibet/WGS/chr/
+        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+        #    evolbio.ut.ee/PNG_bams2/Ricaut/"
+        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+        #    evolbio.ut.ee/PNG_bams2/Vernot/"
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
         # - "evolbio.ut.ee/PNG_bams2/SGDP/"
         - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
            evolbio.ut.ee/PNG_bams2/IGDP/"
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/Sanger/"
+        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+        #    evolbio.ut.ee/PNG_bams2/Sanger/"
 
     # directory to hold all result
     data_root: "/projects/AKEY/akey_vol2/serenatu/data/variant.calling"
