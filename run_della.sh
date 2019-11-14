@@ -18,7 +18,7 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --parsable -A eeb" \
     --use-conda \
     --use-singularity -rp -w 120 -j 250 \
-    --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 aria_downloads=20 \
+    --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 aria_downloads=10 \
     --max-jobs-per-second 1 \
     --rerun-incomplete \
     #--keep-going

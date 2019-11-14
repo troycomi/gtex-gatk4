@@ -1,25 +1,120 @@
-import os
-from slurm_scrub.predictor import Predictor
-
-
-predictor = Predictor('/home/tcomi/test.json')
-
-def est_resource(job, inputs, resource, default):
-    try:
-        result = predictor.estimate(job,
-                                    sum([os.path.getsize(i) for i in inputs]),
-                                    resource, default)
-    except:
-        print(f'Error in {job} {resource} {default} for {inputs}')
-        raise Exception
-    return result
-
-chroms = list(range(1,23))
-
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-callable'].extend(
-         expand(paths['haplotype_raw'],
-                chromosome=chroms,
+         expand(paths['call_bed'],
+                chromosome=chromosomes,
                 id=ids.keys()))
+    subw_outputs_dict['GATK-callable'].extend(
+         expand(paths['call_summary_combined'],
+                id=ids.keys()))
+    subw_outputs_dict['GATK-callable'].append(
+        paths['call_summary_quantile'] )
 
+def call_bam(wildcards):
+    return ancient(ids[wildcards.id].format(
+            id=wildcards.id, chromosome=wildcards.chromosome)),
 
+rule call_depth:
+    input: bam=call_bam
+    output: temp(paths['call_depth'])
+    singularity:
+        paths['gatk-container']
+
+    resources:
+        mem_mb=2000
+
+    shell:
+        'bedtools genomecov '
+            '-ibam {input.bam} '
+            '> {output} '
+
+def get_depth_quantile_input(wildcards):
+    return expand(paths['call_depth'], id=wildcards.id, chromosome=chromosomes)
+
+rule depth_quantiles:
+    input: get_depth_quantile_input
+    output: temp(paths['call_samp_quantile'])
+    resources:
+        mem_mb=2000
+
+    run:
+        import pandas as pd
+        import numpy as np
+        def read_depth(filename):
+            df = pd.read_csv(filename, sep='\t', usecols=[0, 1, 2],
+                             index_col=1, header=None,
+                             names=['chrom', 'depth', 'count'])
+            df = df.loc[df['chrom'] == df['chrom'].iloc[0]].drop(columns='chrom')
+            return df
+         
+        combined = read_depth(input[0])
+        for filename in input[1:]:
+            combined = combined.add(read_depth(filename), fill_value=0)
+        quants = (combined.cumsum() /
+                  combined.sum()).rename(columns={'count': 'quantile'})
+        inds = np.abs(np.subtract.outer(quants['quantile'].values,
+                      config['quantiles'])).argmin(axis=0)
+        depths = quants.index[inds].tolist()
+        with open(output[0], 'w') as writer:
+            writer.write('\t'.join(['id'] +
+                                   [str(q) for q in config['quantiles']]) + '\n')
+            writer.write('\t'.join([wildcards.id] + 
+                                   [str(d) for d in depths]) + '\n')
+
+rule depth_merge:
+    input: expand(paths['call_samp_quantile'], id=ids.keys())
+    output: paths['call_summary_quantile']
+    resources:
+        mem_mb=100
+
+    shell:
+        '''
+            if [[ -f {output} ]]; then
+                head {input[0]} -n 1 | gzip > {output}
+            fi
+            tail {input} -n +2 -q | gzip >> {output} 
+        '''
+
+def get_max_depth(wildcards, input):
+    with open(input['quant'], 'r') as quants:
+        quants.readline()
+        return quants.readline().split()[-1]
+
+print(paths['call_bed'])
+rule callable_loci:
+    input:
+        bam=call_bam,
+        quant=paths['call_samp_quantile']
+
+    output:
+        bed=paths['call_bed'],
+        summary=temp(paths['call_summary'])
+
+    params:
+        max_depth=get_max_depth
+
+    singularity:
+        paths['gatk3-container']
+
+    resources:
+        mem_mb=2000
+
+    shell:
+        'java -Xmx1500M '
+            '-jar /usr/GenomeAnalysisTK.jar '
+            '-T CallableLoci '
+            '-R {paths[ref_genome]} '
+            '-I {input.bam} '
+            '--maxDepth {params.max_depth} '
+            '-summary {output.summary} '
+            '-o >( grep "PASS" | gzip > {output.bed} ) '
+            '{config[gatk][CallableLoci][options]} '
+            '> /dev/null '
+
+rule callable_combine:
+    input:
+        lambda wc: expand(paths['call_summary'], id=wc.id, chromosome=chromosomes)
+    output:
+        paths['call_summary_combined']
+
+    shell:
+        'tail -n + 1 {input} | gzip > {output}'

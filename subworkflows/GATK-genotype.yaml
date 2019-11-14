@@ -1,10 +1,10 @@
 ---
 path:
     # # # GENOTYPE # # #
-    sub_genotype: "__DATA_ROOT__/HaplotypeCaller"
-    haplotype_raw: "__DATA_ROOT__/HaplotypeCaller/GVCF/chr{chromosome}/\
+    sub_genotype: "__DATA_ROOT__/variant.calling/HaplotypeCaller"
+    haplotype_raw: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
                        {id}.raw_variants.g.vcf"
-    haplotype_idx: "__DATA_ROOT__/HaplotypeCaller/GVCF/chr{chromosome}/\
+    haplotype_idx: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
                        {id}.raw_variants.g.vcf.idx"
     name_map: "__SUB_GENOTYPE__/maps/chr{chromosome}.map"
     genomics_db: "__SUB_GENOTYPE__/DB/chr{chromosome}"

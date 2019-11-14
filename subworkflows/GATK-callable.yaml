@@ -1,10 +1,24 @@
 ---
+# only last value will determine callable base max
+quantiles: [.005, 0.25, .50, .995, .975]
+
 path:
     # # # CALLABLE # # #
     sub_callable: "__DATA_ROOT__/callable_bases"
+    call_depth: "__SUB_CALLABLE__/depth/{id}.chr{chromosome}.depth"
+    # contains sample name and each quantile requested (header)
+    call_samp_quantile: "__SUB_CALLABLE__/depth/{id}.txt"
+    # concatenate above files into one
+    call_summary_quantile: "__SUB_CALLABLE__/depth/summary.gz"
+    # DONT FORGET TO GREP CALLABLE!!
+    call_bed: "__SUB_CALLABLE__/bed/{id}.chr{chromosome}.bed.gz"
+    call_summary: "__SUB_CALLABLE__/bed/{id}.chr{chromosome}.summary"
+    call_summary_combined: "__SUB_CALLABLE__/bed/{id}.summary.gz"
 
 gatk:
-    HaplotypeCaller:
-        memory: "7G"
+    CallableLoci:
         options: >-
-            --genotyping-mode DISCOVERY
+            --minDepth 10
+            --minBaseQuality 20
+            --minMappingQuality 30
+            --minDepthForLowMAPQ 10

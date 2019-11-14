@@ -5,6 +5,7 @@ main:
         - 'IGDP-download'
         # - "GATK-map"
         # - "GATK-bqsr"
+        # - "GATK-callable"
         # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
@@ -31,14 +32,14 @@ path:
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
         #    evolbio.ut.ee/PNG_bams2/Vernot/"
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        # - "evolbio.ut.ee/PNG_bams2/SGDP/"
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/IGDP/"
+        #    evolbio.ut.ee/PNG_bams2/SGDP/"
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
         #    evolbio.ut.ee/PNG_bams2/Sanger/"
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/IGDP/"
 
     # directory to hold all result
-    data_root: "/projects/AKEY/akey_vol2/serenatu/data/variant.calling"
+    data_root: "/projects/AKEY/akey_vol2/serenatu/data"
 
     # Reference with index files
     ref_genome: "/projects/AKEY/akey_vol1/home/selinav/\

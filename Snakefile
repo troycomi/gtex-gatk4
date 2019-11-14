@@ -1,8 +1,21 @@
 from scripts.clean_config import clean_config_paths, join_config_paths
 from scripts.get_samples import get_samples
 import os
+from slurm_scrub.predictor import Predictor
 
-#configfile: 'config_wgs.yaml'
+
+predictor = Predictor('/home/tcomi/test.json')
+
+def est_resource(job, inputs, resource, default):
+    try:
+        result = predictor.estimate(job,
+                                    sum([os.path.getsize(i) for i in inputs]),
+                                    resource, default)
+    except:
+        print(f'Error in {job} {resource} {default} for {inputs}')
+        raise Exception
+    return result
+
 configfile: 'config.yaml'
 
 paths = config['path']
@@ -10,7 +23,8 @@ paths = clean_config_paths(paths)
 paths['base'] = os.getcwd()
 
 ids = {}
-valid_chromosomes = {str(c) for c in range(1,23)}
+chromosomes = list(range(1,23))
+valid_chromosomes = {str(c) for c in chromosomes}
 # sample ids to run workflow with
 for dirname in paths['input_dirs']:
     wc = glob_wildcards(dirname + paths['bam_pattern'].split('/')[1])  # strip leading id dir
