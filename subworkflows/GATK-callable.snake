@@ -68,9 +68,7 @@ rule depth_merge:
 
     shell:
         '''
-            if [[ -f {output} ]]; then
-                head {input[0]} -n 1 | gzip > {output}
-            fi
+            head {input[0]} -n 1 | gzip > {output}
             tail {input} -n +2 -q | gzip >> {output} 
         '''
 
@@ -79,7 +77,6 @@ def get_max_depth(wildcards, input):
         quants.readline()
         return quants.readline().split()[-1]
 
-print(paths['call_bed'])
 rule callable_loci:
     input:
         bam=call_bam,
@@ -106,9 +103,9 @@ rule callable_loci:
             '-I {input.bam} '
             '--maxDepth {params.max_depth} '
             '-summary {output.summary} '
-            '-o >( grep "PASS" | gzip > {output.bed} ) '
+            '-o >( grep "CALLABLE" | gzip > {output.bed} ) '
             '{config[gatk][CallableLoci][options]} '
-            '> /dev/null '
+            '&> /dev/null '
 
 rule callable_combine:
     input:
@@ -117,4 +114,4 @@ rule callable_combine:
         paths['call_summary_combined']
 
     shell:
-        'tail -n + 1 {input} | gzip > {output}'
+        'tail -n +1 {input} | gzip > {output}'
