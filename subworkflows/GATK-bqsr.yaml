@@ -1,14 +1,13 @@
 ---
 path:
     # # # BQSR # # #
-    bqsr_base: "__DATA_ROOT__/bqsr"
+    bqsr_base: "__SGDP_BASE__/bqsr"
     recal_table: "__BQSR_BASE__/tables/{id}.{type}_bqsr.table"
     recal_covariates: "__BQSR_BASE__/pdfs/{id}.bqsr.pdf"
-    # recal_bam defined in main config.yaml
+    recal_bam: "__BQSR_BASE__/bams/{id}.bqsr.bam"
 
 gatk:
     BQSR:
-        memory: "6G"
         known_sites:
             "--known-sites {dbsnp}
             --known-sites {mills}

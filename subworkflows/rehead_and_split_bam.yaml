@@ -1,19 +1,11 @@
 ---
-sed_command: 's/SN:chr/SN:/'
-
 path:
     # # # REHEAD BAMS # # #
     base_head: "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-                evolbio.ut.ee/PNG_bams2/SGDP"
+                evolbio.ut.ee/PNG_bams2/SGDP/mapping"
 
-    base_bam: "__BASE_HEAD__/{id}/{id}.bam"
-    base_bai: "__BASE_HEAD__/{id}/{id}.bam.bai"
+    base_bam: "__BASE_HEAD__/dedup_bam/{id}.dedup.bam"
+    base_bai: "__BASE_HEAD__/dedup_bam/{id}.dedup.bam.bai"
 
-    rehead_bam: "__BASE_HEAD__/{id}/rehead.{id}.bam"
-    rehead_bai: "__BASE_HEAD__/{id}/rehead.{id}.bam.bai"
-
-    chroms_temp_bam: "__BASE_HEAD__/{id}/temp_{id}.chr{chromosome}.bam"
-    chroms_temp_bai: "__BASE_HEAD__/{id}/temp_{id}.chr{chromosome}.bam.bai"
-
-    chroms_bam: "__BASE_HEAD__/{id}/{id}.chr{chromosome}.bam"
-    chroms_bai: "__BASE_HEAD__/{id}/{id}.chr{chromosome}.bam.bai"
+    rehead_bam: "__BASE_HEAD__/rehead/{id}.dedup.bam"
+    rehead_bai: "__BASE_HEAD__/rehead/{id}.dedup.bai"

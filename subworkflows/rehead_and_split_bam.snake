@@ -8,64 +8,46 @@ target_ids = [
 
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['rehead_and_split_bam'].extend(
-         expand(paths['chroms_bam'],
-                id=target_ids,
-                chromosome=chroms))
+         expand(paths['rehead_bam'],
+                id=target_ids))
 
-rule rehead_top_bam:
+rule rehead_bam:
     input:
         bam=paths['base_bam'],
         bai=paths['base_bai']
 
     output:
-        bam=temp(paths['rehead_bam']),
-        bai=temp(paths['rehead_bai']),
-
-    singularity:
-        paths['gatk-container']
-
-    shell:
-        'samtools view -H {input.bam} |'
-            'sed \'{config[sed_command]}\' |'
-            'samtools reheader - {input.bam} > {output.bam} \n'
-        'samtools index {output.bam} {output.bai}'
-
-rule rehead_split_bam:
-    input:
         bam=paths['rehead_bam'],
         bai=paths['rehead_bai'],
 
-    output:
-        bam=temp(paths['chroms_temp_bam']),
-        bai=temp(paths['chroms_temp_bai'])
-
     singularity:
         paths['gatk-container']
 
-    shell:
-        'samtools view -hb {input.bam} {wildcards.chromosome} > {output.bam}.temp \n'
-        'samtools view -H {output.bam}.temp |'
-            'sed \'/SN:M/d\' | '  # remove mismatched sizes not needed
-            'samtools reheader - {output.bam}.temp > {output.bam} \n'
-        'rm {output.bam}.temp \n'
-        'samtools index {output.bam} {output.bai} '
-
-rule rehead_add_sample:
-    input:
-        bam=paths['chroms_temp_bam'],
-        bai=paths['chroms_temp_bai']
-
-    output:
-        bam=paths['chroms_bam'],
-        bai=paths['chroms_bai']
-
-    singularity:
-        paths['gatk-container']
+    resources:
+        mem=1000,
+        time=180
 
     #@RG     ID:LP6005441-DNA_F02    SM:LP6005441-DNA_F02
-    # add in RG line to header
+    # add in RG line to header 
+    # add RG in each entry of bam
     shell:
-        '{{ samtools view -H {input.bam} ;'
-            ' echo -e "@RG\\tID:{wildcards.id}\\tSM:{wildcards.id}" ; }} | '
-            'samtools reheader - {input.bam} > {output.bam} \n'
-        'samtools index {output.bam} {output.bai} '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
+            'AddOrReplaceReadGroups '
+            '-I={input.bam} '
+            '-O={output.bam} '
+            '--RGLB library '
+            '--RGPL illumina '
+            '--RGPU pu '
+            '--RGSM {wildcards.id} '
+            '--RGID {wildcards.id} '
+            '--CREATE_INDEX true '
+            '--VERBOSITY {config[gatk][verbosity]} '
+        # 'samtools view -S -b '
+        #     '<( {{'
+        #         ' samtools view -H {input.bam} ;'
+        #         ' echo -e "@RG\\tID:{wildcards.id}\\tSM:{wildcards.id}" ;'
+        #         ' samtools view {input.bam} | '
+        #             ' sed \'s/$/\\tRG:Z:{wildcards.id}/\' ;'
+        #     ' }} ) '
+        #     '> {output.bam} \n'
+        # 'samtools index {output.bam} {output.bai} \n'

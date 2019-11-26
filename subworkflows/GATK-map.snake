@@ -1,5 +1,11 @@
-if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=ids)
+map_ids = [
+    'LP6005441-DNA_A04',
+    'LP6005441-DNA_B11',
+    'LP6005441-DNA_F01'
+]
+
+if "subw_outputs_dict" in locals():
+    subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=map_ids)
 
 ruleorder: fastq_to_ubam > revert_sam
 
@@ -13,13 +19,16 @@ rule revert_sam:
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    resources:
+        mem=12000,
+        time=600
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][RevertSam][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'RevertSam '
-            '--VERBOSITY {gatk[verbosity]} '
-            '--TMP_DIR={path[temp_dir]} '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--TMP_DIR={paths[temp_dir]} '
+            '--VALIDATION_STRINGENCY SILENT '
             '-I={input} '
             '-O={output} '
     
@@ -34,7 +43,10 @@ rule fastq_to_ubam:
     singularity:
         paths['gatk-container']
 
+    threads: 2
     resources:
+        mem=8000,
+        time=2*24*60,
         fastq_instances=1
 
     shell:
@@ -55,7 +67,7 @@ rule fastq_to_ubam:
             'TEMP_UBAM=$(dirname ${{RG1[$i]}})/$(basename ${{RG1[$i]}} | '  
                 'cut -d "_" -f 1-4).ubam  \n'
             'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3,4 --output-delimiter=".")  \n'
-            'gatk --java-options "-Xmx{config[gatk][FastqToSam][memory]}" '
+            'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
                 'FastqToSam '
                 '-F1=${{RG1[$i]}} '
                 '-F2=${{RG2[$i]}} '
@@ -68,7 +80,7 @@ rule fastq_to_ubam:
             'TEMP_UBAMS+=($TEMP_UBAM)  \n'
             'UBAMS_ARG+=(-I $TEMP_UBAM)  \n'
         'done  \n'
-        'gatk --java-options "-Xmx{config[gatk][MergeSamFiles][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'MergeSamFiles '
             '{config[gatk][MergeSamFiles][options]} '
             '--VERBOSITY={config[gatk][verbosity]} '
@@ -98,6 +110,10 @@ checkpoint split_ubam:
     singularity:
         paths['gatk-container']
 
+    resources:
+        mem=400,
+        time=2*24*60
+
     # make output dir, store header, split sam and convert back to bam
     shell:
         "mkdir {output}\n"
@@ -123,8 +139,12 @@ rule mark_adapters:
     singularity:
         paths['gatk-container']
 
+    resources:
+        mem=1000,
+        time=180
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MarkIlluminaAdapters][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'MarkIlluminaAdapters '
             '-I={input} '
             '-O={output.bam} '
@@ -144,8 +164,11 @@ rule sam_to_fastq:
 
     group: 'map_fastq'
 
+    resources:
+        mem=8000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][SamToFastq][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'SamToFastq '
             '-I={input.marked} '
             '--FASTQ={output} '
@@ -166,6 +189,7 @@ rule map_bam:
         'bwa mem '
             '{config[gatk][Bwa_Mem][options]} '
             '-p {paths[ref_genome]} '
+            '-t 5 '
             '{input.marked} > {output} '
             '2>/dev/null'
 
@@ -183,8 +207,14 @@ rule merge_bam:
 
     group: 'map_fastq'
 
+    threads: 3
+
+    resources:
+        mem=24000,
+        time=2*24*60
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MergeBamAlignment][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} / 3))M" '
             'MergeBamAlignment '
             '--ALIGNED_BAM={input.bam} '
             '--UNMAPPED_BAM={input.ubam} '
@@ -226,12 +256,15 @@ rule merge_split_bam:
 
     group: 'merge_dedup'
 
+    resources:
+        mem=14000
+
     shell:
         'BAMS_ARG=()\n'
         'for bamfile in {input}; do\n'
             'BAMS_ARG+=(-I $bamfile)\n'
         'done\n'
-        'gatk --java-options "-Xmx{config[gatk][MergeSamFilesSample][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'MergeSamFiles '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--ASSUME_SORTED '
@@ -256,8 +289,12 @@ rule dedup_bam:
 
     group: 'merge_dedup'
 
+    resources:
+        mem=14000,
+        time=3*24*60
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MarkDuplicates][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'MarkDuplicates '
             '-I={input.bam} '
             '-O={output.bam} '

@@ -17,9 +17,9 @@ path:
 
     # only fastq or old bam needs be valid
     # if both exist will use the fastq
-    old_bam: "__MAPPING_BASE__/{id}.ubam"
+    old_bam: "__SGDP_BASE_BAM__"
 
-    mapping_base: "__DATA_ROOT__/mapping"
+    mapping_base: "__SGDP_BASE__/mapping"
     ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
     split_ubam_dir: "__MAPPING_BASE__/ubams/{id}"
     split_ubam: "__SPLIT_UBAM_DIR__/part_{part}.ubam"
@@ -40,7 +40,6 @@ path:
 
 gatk:
     RevertSam:
-        memory: "12G"
         options: >
             --ATTRIBUTE_TO_CLEAR=XA
             --ATTRIBUTE_TO_CLEAR=XS
@@ -50,18 +49,12 @@ gatk:
             --ATTRIBUTE_TO_CLEAR=BI
 
     FastqToSam:
-        memory: "8G"
         options: "-PL=ILLUMINA"
 
     MergeSamFiles:
-        memory: "8G"
         options: "-SO queryname"
 
-    MarkIlluminaAdapters:
-        memory: "1G"
-
     SamToFastq:
-        memory: "8G"
         options: >
             --CLIPPING_ATTRIBUTE=XT
             --CLIPPING_ACTION=2
@@ -72,7 +65,6 @@ gatk:
         options: "-M -t 2"
 
     MergeBamAlignment:
-        memory: "8G"
         options: >
             --CREATE_INDEX=true
             --ADD_MATE_CIGAR=true
@@ -82,10 +74,6 @@ gatk:
             --ATTRIBUTES_TO_RETAIN=XS
 
     MergeSamFilesSample:
-        memory: "11G"
         options: >
             -SO coordinate
             --CREATE_INDEX=true
-
-    MarkDuplicates:
-        memory: "11G"

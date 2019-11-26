@@ -24,9 +24,7 @@ with open(paths['sgdp_ftp'], 'r', errors='ignore') as reader:
 print(f'{len(ftp_links)} files to download')
 print(f'{count} files found')
 
-# inds = list(ftp_links.keys())[0:3]
-# ftp_links = {i: ftp_links[i] for i in inds}
-# ids = {i: ids[i] for i in inds}
+# ids = {k: ids[k] for k in ftp_links.keys()}
 
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['SGDP-download'].extend(
@@ -120,11 +118,15 @@ checkpoint sgdp_download_bai:
 # run if download failed
 rule sgdp_index:
     input:
-        paths['sgdp_base_bam']
+        ancient(paths['sgdp_base_bam'])
     output:
         temp(paths['sgdp_base_bai_sam'])
     singularity:
         paths['gatk-container']
+    resources:
+        mem=1000,
+        time=120,
+
     shell:
         'samtools index {input} {output} '
 
@@ -175,6 +177,10 @@ rule group_sgdp_chrom_split:
 
     output:
         touch(paths['sgdp_temp'])
+
+    resources:  # assumes 3 cores
+        mem=1000,
+        time=120
 
     group:
         'sgdp_chrom_split_group'

@@ -2,25 +2,31 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-callable'].extend(
          expand(paths['call_bed'],
                 chromosome=chromosomes,
-                id=ids.keys()))
+                id=list(ids.keys())[:22]))
     subw_outputs_dict['GATK-callable'].extend(
          expand(paths['call_summary_combined'],
-                id=ids.keys()))
-    subw_outputs_dict['GATK-callable'].append(
-        paths['call_summary_quantile'] )
+                id=list(ids.keys())[:22]))
+#     subw_outputs_dict['GATK-callable'].append(
+#         paths['call_summary_quantile'] )
+
+def all_bams(wildcards):
+    return expand(ids[wildcards.id],
+                  id=wildcards.id, chromosome=chromosomes)
 
 def call_bam(wildcards):
     return ancient(ids[wildcards.id].format(
-            id=wildcards.id, chromosome=wildcards.chromosome)),
+            id=wildcards.id, chromosome=wildcards.chromosome))
+
+localrules:
+    depth_merge
 
 rule call_depth:
     input: bam=call_bam
     output: temp(paths['call_depth'])
+    group: 'call_depth'
+
     singularity:
         paths['gatk-container']
-
-    resources:
-        mem_mb=2000
 
     shell:
         'bedtools genomecov '
@@ -32,9 +38,13 @@ def get_depth_quantile_input(wildcards):
 
 rule depth_quantiles:
     input: get_depth_quantile_input
-    output: temp(paths['call_samp_quantile'])
+    output: paths['call_samp_quantile']
+    group: 'call_depth'
+
     resources:
-        mem_mb=2000
+        mem=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'mem', 3000),
+        time=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'time', 240),
+        short_jobs=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'short_jobs', 0),
 
     run:
         import pandas as pd
@@ -63,8 +73,6 @@ rule depth_quantiles:
 rule depth_merge:
     input: expand(paths['call_samp_quantile'], id=ids.keys())
     output: paths['call_summary_quantile']
-    resources:
-        mem_mb=100
 
     shell:
         '''
@@ -86,6 +94,8 @@ rule callable_loci:
         bed=paths['call_bed'],
         summary=temp(paths['call_summary'])
 
+    group: 'call_loci'
+
     params:
         max_depth=get_max_depth
 
@@ -93,10 +103,10 @@ rule callable_loci:
         paths['gatk3-container']
 
     resources:
-        mem_mb=2000
+        mem=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'mem', 2000),
 
     shell:
-        'java -Xmx1500M '
+        'java -Xmx$(({resources.mem} * 9 / 10))M '
             '-jar /usr/GenomeAnalysisTK.jar '
             '-T CallableLoci '
             '-R {paths[ref_genome]} '
@@ -112,6 +122,12 @@ rule callable_combine:
         lambda wc: expand(paths['call_summary'], id=wc.id, chromosome=chromosomes)
     output:
         paths['call_summary_combined']
+    group: 'call_loci'
+
+    resources:
+        mem=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'mem', 2000),
+        time=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'time', 600),
+        short_jobs=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'short_jobs', 0),
 
     shell:
         'tail -n +1 {input} | gzip > {output}'

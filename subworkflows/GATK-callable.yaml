@@ -10,10 +10,9 @@ path:
     call_samp_quantile: "__SUB_CALLABLE__/depth/{id}.txt"
     # concatenate above files into one
     call_summary_quantile: "__SUB_CALLABLE__/depth/summary.gz"
-    # DONT FORGET TO GREP CALLABLE!!
-    call_bed: "__SUB_CALLABLE__/bed/{id}.chr{chromosome}.bed.gz"
-    call_summary: "__SUB_CALLABLE__/bed/{id}.chr{chromosome}.summary"
-    call_summary_combined: "__SUB_CALLABLE__/bed/{id}.summary.gz"
+    call_bed: "__SUB_CALLABLE__/bed/{id}/{id}.chr{chromosome}.bed.gz"
+    call_summary: "__SUB_CALLABLE__/bed/{id}/{id}.chr{chromosome}.summary"
+    call_summary_combined: "__SUB_CALLABLE__/bed/{id}/{id}.summary.gz"
 
 gatk:
     CallableLoci:

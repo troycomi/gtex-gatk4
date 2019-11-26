@@ -16,13 +16,9 @@ if config['center'] == 'merged':
 
 if "subw_outputs_dict" in locals() and "ids" in locals():
     output_ids = [id for id in ids if id in tumor_normal]
-    subw_outputs_dict['GATK-mutect2'] = expand(paths['unfiltered_vcf'],
+    subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
                                                id=output_ids)
-    subw_outputs_dict['GATK-mutect2'] = expand(paths['mutect_bam'],
-                                               id=output_ids)
-    # subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
-    #                                            id=output_ids)
-    # subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
+    subw_outputs_dict['GATK-mutect2'].append(paths['filter_vcf_temp'])
 
 localrules:
     pon_mutect_args

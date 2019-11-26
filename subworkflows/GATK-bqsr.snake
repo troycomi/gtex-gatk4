@@ -1,15 +1,28 @@
 from scripts.clean_config import join_config_paths
 
-if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-bqsr'] = expand(paths['recal_covariates'], id=ids)
+map_ids = [
+    'LP6005441-DNA_A04',
+    'LP6005441-DNA_B11',
+    'LP6005441-DNA_F01'
+]
 
-if 'dedup_bam' not in paths:
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['GATK-bqsr'] = expand(paths['recal_covariates'], id=map_ids)
+
+if 'rehead_bam' not in paths:
     configfile: paths['base'] + '/subworkflows/GATK-map.yaml'
     paths = join_config_paths(paths, config['path'])
 
+def get_bqsr_input_bams(wildcards):
+    return [paths['rehead_bam'].format(id=wildcards.id),
+            paths['rehead_bai'].format(id=wildcards.id),
+            ]
+def get_bqsr_mem(wildcards, input):
+    return est_resource('bqsr', get_bqsr_input_bams(wildcards), 'mem', 6000)
+
 def get_bam(wildcards):
     if wildcards.type == 'before':
-        return {'bam': paths['dedup_bam'], 'bai': paths['dedup_bai']}
+        return {'bam': ancient(paths['rehead_bam']), 'bai': ancient(paths['rehead_bai'])}
     elif wildcards.type == 'after':
         return {'bam': ancient(paths['recal_bam'])}
     else:
@@ -37,8 +50,11 @@ rule bqsr_table:
 
     group: 'bqsr'
 
+    resources:
+        mem=get_bqsr_mem,
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'BaseRecalibrator '
             '-R {paths[ref_genome]} '
             '--verbosity {config[gatk][verbosity]} '
@@ -48,9 +64,9 @@ rule bqsr_table:
             # '-L {paths[exome_intervals]} '
 
 def get_before_table(wildcards):
-    return {'bam': paths['dedup_bam'],
-            'bai': paths['dedup_bai'],
-            'table': paths['recal_table'].replace('{type}', 'before')}
+    return {'bam': ancient(paths['rehead_bam']),
+            'bai': ancient(paths['rehead_bai']),
+            'table': ancient(paths['recal_table'].replace('{type}', 'before'))}
 
 rule bqsr_bam:
     input:
@@ -64,8 +80,11 @@ rule bqsr_bam:
 
     group: 'bqsr'
 
+    resources:
+        mem=get_bqsr_mem,
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'ApplyBQSR '
             '-R {paths[ref_genome]} '
             '--verbosity {config[gatk][verbosity]} '
@@ -89,8 +108,13 @@ rule analyze_bqsr:
 
     group: 'bqsr'
 
+    resources:
+        mem=get_bqsr_mem,
+        time=lambda wildcards, input: est_resource('bqsr', get_bqsr_input_bams(wildcards), 'time', 24*60),
+        short_jobs=lambda wildcards, input: est_resource('bqsr', get_bqsr_input_bams(wildcards), 'short_jobs', 0),
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx$(({resources.mem} * 9 / 10))M" '
             'AnalyzeCovariates '
             '--verbosity {config[gatk][verbosity]} '
             '-before {input.before} '
