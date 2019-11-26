@@ -6,11 +6,11 @@ from slurm_scrub.predictor import Predictor
 
 predictor = Predictor('/home/tcomi/test.json')
 
-def est_resource(job, inputs, resource, default):
+def est_resource(job, inputs, resource, default, attempt):
     try:
         result = predictor.estimate(job,
                                     sum([os.path.getsize(i) for i in inputs]),
-                                    resource, default)
+                                    resource, default, attempt)
     except:
         print(f'Error in {job} {resource} {default} for {inputs}')
         raise Exception
@@ -78,7 +78,7 @@ onstart:
 
 onerror:
     print("Error! Mailing log...")
-    shell("echo 'Check error log' | mail -s 'gatk-stucci error' tcomi@princeton.edu")
+    shell("tail -n 100 {log} | mail -s 'gatk-stucci error' tcomi@princeton.edu")
     print("Done")
 
 localrules:

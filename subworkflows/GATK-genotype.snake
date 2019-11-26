@@ -19,9 +19,9 @@ rule index_bam:
         paths['gatk-container']
 
     resources:
-        mem=lambda wildcards, input: est_resource('index_bam', input, 'mem', 4000),
-        time=lambda wildcards, input: est_resource('index_bam', input, 'time', 90),
-        short_jobs=lambda wildcards, input: est_resource('index_bam', input, 'short_jobs', 0),
+        mem=lambda wildcards, input, attempt: est_resource('index_bam', input, 'mem', 4000, attempt),
+        time=lambda wildcards, input, attempt: est_resource('index_bam', input, 'time', 90, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource('index_bam', input, 'short_jobs', 0, attempt),
 
     shell:
         'samtools sort -m 3G {input} {input}.sort \n'
@@ -46,9 +46,9 @@ rule haplotype_caller:
         idx=paths['haplotype_idx']
 
     resources:
-        mem=lambda wildcards, input: est_resource('haplotype', input, 'mem', 8000),
-        time=lambda wildcards, input: est_resource('haplotype', input, 'time', 360),
-        short_jobs=lambda wildcards, input: est_resource('haplotype', input, 'short_jobs', 0),
+        mem=lambda wildcards, input, attempt: est_resource('haplotype', input, 'mem', 8000, attempt),
+        time=lambda wildcards, input, attempt: est_resource('haplotype', input, 'time', 360, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource('haplotype', input, 'short_jobs', 0, attempt),
 
     singularity:
         paths['gatk-container']

@@ -16,13 +16,14 @@ snakemake --cluster-config 'della_cluster.yaml' \
                 --mem={resources.mem}M --time={resources.time} \
                 --output=slurm_out/%x_%A --job-name={cluster.jobname} \
                 --parsable -A eeb" \
+    --cluster-status "/home/tcomi/scripts/slurm-status.py" \
     --use-conda \
     --use-singularity -rp -w 120 -j 250 \
     --resources fastq_instances=2 short_jobs=2 aspera_downloads=5 aria_downloads=10 \
     --max-jobs-per-second 1 \
     --rerun-incomplete \
-    #--keep-going
-    #--restart-times 1 \
+    --restart-times 1 \
+    --keep-going  # probably don't want this normally!
     
     #--dag | dot -Tsvg > dag.svg
     #--verbose \
