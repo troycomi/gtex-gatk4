@@ -15,11 +15,11 @@ ids.update({id: paths['igdp_bam_target'] for id in igdp_ids})
 
 print(f'{len(igdp_ids)} samples left to download from IGDB')
 
-# if "subw_outputs_dict" in locals() and "ids" in locals():
-#     subw_outputs_dict['IGDP-download'].extend(
-#          expand(paths['igdp_bam_target'],
-#                 id=igdp_ids,
-#                 chromosome=chroms))
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['IGDP-download'].extend(
+         expand(paths['igdp_bam_target'],
+                id=igdp_ids,
+                chromosome=chroms))
 
 localrules:
     igdp_download_bam,
