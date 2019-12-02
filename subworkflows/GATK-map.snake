@@ -31,7 +31,7 @@ rule revert_sam:
             '--VALIDATION_STRINGENCY SILENT '
             '-I={input} '
             '-O={output} '
-    
+
 rule fastq_to_ubam:
     input:
         R1=ancient(paths['fastq_R1']),

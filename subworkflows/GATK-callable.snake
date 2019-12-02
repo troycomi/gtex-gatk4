@@ -2,10 +2,10 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-callable'].extend(
          expand(paths['call_bed'],
                 chromosome=chromosomes,
-                id=list(ids.keys())[:22]))
+                id=list(sorted(ids.keys()))[:22]))
     subw_outputs_dict['GATK-callable'].extend(
          expand(paths['call_summary_combined'],
-                id=list(ids.keys())[:22]))
+                id=list(sorted(ids.keys()))[:22]))
 #     subw_outputs_dict['GATK-callable'].append(
 #         paths['call_summary_quantile'] )
 
@@ -42,9 +42,12 @@ rule depth_quantiles:
     group: 'call_depth'
 
     resources:
-        mem=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'mem', 3000),
-        time=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'time', 240),
-        short_jobs=lambda wildcards: est_resource('call_depth', all_bams(wildcards), 'short_jobs', 0),
+        mem=lambda wildcards, attempt: est_resource(
+                'call_depth', all_bams(wildcards), 'mem', 3000, attempt),
+        time=lambda wildcards, attempt: est_resource(
+                'call_depth', all_bams(wildcards), 'time', 240, attempt),
+        short_jobs=lambda wildcards, attempt: est_resource(
+                'call_depth', all_bams(wildcards), 'short_jobs', 0, attempt),
 
     run:
         import pandas as pd
@@ -55,7 +58,7 @@ rule depth_quantiles:
                              names=['chrom', 'depth', 'count'])
             df = df.loc[df['chrom'] == df['chrom'].iloc[0]].drop(columns='chrom')
             return df
-         
+
         combined = read_depth(input[0])
         for filename in input[1:]:
             combined = combined.add(read_depth(filename), fill_value=0)
@@ -67,7 +70,7 @@ rule depth_quantiles:
         with open(output[0], 'w') as writer:
             writer.write('\t'.join(['id'] +
                                    [str(q) for q in config['quantiles']]) + '\n')
-            writer.write('\t'.join([wildcards.id] + 
+            writer.write('\t'.join([wildcards.id] +
                                    [str(d) for d in depths]) + '\n')
 
 rule depth_merge:
@@ -103,7 +106,8 @@ rule callable_loci:
         paths['gatk3-container']
 
     resources:
-        mem=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'mem', 2000),
+        mem=lambda wildcards, input, attempt: est_resource(
+                'call_loci', all_bams(wildcards), 'mem', 4000, attempt),
 
     shell:
         'java -Xmx$(({resources.mem} * 9 / 10))M '
@@ -125,9 +129,12 @@ rule callable_combine:
     group: 'call_loci'
 
     resources:
-        mem=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'mem', 2000),
-        time=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'time', 600),
-        short_jobs=lambda wildcards, input: est_resource('call_loci', all_bams(wildcards), 'short_jobs', 0),
+        mem=lambda wildcards, input, attempt: est_resource(
+                'call_loci', all_bams(wildcards), 'mem', 4000, attempt),
+        time=lambda wildcards, input, attempt: est_resource(
+                'call_loci', all_bams(wildcards), 'time', 600, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+                'call_loci', all_bams(wildcards), 'short_jobs', 0, attempt),
 
     shell:
         'tail -n +1 {input} | gzip > {output}'

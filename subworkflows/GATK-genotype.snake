@@ -1,9 +1,15 @@
-print(f'in genotype, {len(ids)} ids')
+map_ids = [
+    'LP6005441-DNA_A04',
+    'LP6005441-DNA_B11',
+    'LP6005441-DNA_F01'
+]
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-genotype'].extend(
          expand(paths['haplotype_raw'],
                 chromosome=chromosomes,
-                id=ids.keys()))
+                id=map_ids))
+         #id=ids.keys()))
     # subw_outputs_dict['GATK-genotype'].extend(
     #     expand(paths['indel_vcf'],
     #            chromosome=chromosomes))
@@ -19,9 +25,12 @@ rule index_bam:
         paths['gatk-container']
 
     resources:
-        mem=lambda wildcards, input, attempt: est_resource('index_bam', input, 'mem', 4000, attempt),
-        time=lambda wildcards, input, attempt: est_resource('index_bam', input, 'time', 90, attempt),
-        short_jobs=lambda wildcards, input, attempt: est_resource('index_bam', input, 'short_jobs', 0, attempt),
+        mem=lambda wildcards, input, attempt: est_resource(
+                'index_bam', input, 'mem', 4000, attempt),
+        time=lambda wildcards, input, attempt: est_resource(
+                'index_bam', input, 'time', 90, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+                'index_bam', input, 'short_jobs', 0, attempt),
 
     shell:
         'samtools sort -m 3G {input} {input}.sort \n'
@@ -46,9 +55,12 @@ rule haplotype_caller:
         idx=paths['haplotype_idx']
 
     resources:
-        mem=lambda wildcards, input, attempt: est_resource('haplotype', input, 'mem', 8000, attempt),
-        time=lambda wildcards, input, attempt: est_resource('haplotype', input, 'time', 360, attempt),
-        short_jobs=lambda wildcards, input, attempt: est_resource('haplotype', input, 'short_jobs', 0, attempt),
+        mem=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'mem', 8000, attempt),
+        time=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'time', 360, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'short_jobs', 0, attempt),
 
     singularity:
         paths['gatk-container']

@@ -2,18 +2,18 @@
 main:
     subworkflows:
         # - 'SGDP-download'
-        - 'IGDP-download'
+        # - 'IGDP-download'
         # - "GATK-map"
+        # - "rehead_and_split_bam"
         # - "GATK-bqsr"
-        # - "GATK-callable"
+        - "GATK-callable"
+        - "GATK-genotype"
         # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
-        - "GATK-genotype"
         # - "GATK-mutect2"
         # - "shearwater"
         # - "igv_batch"
-        # - "rehead_and_split_bam"
 
 path:
     gatk-container: "docker://broadinstitute/gatk:4.1.3.0"
@@ -31,12 +31,12 @@ path:
         #    evolbio.ut.ee/PNG_bams2/Ricaut/"
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
         #    evolbio.ut.ee/PNG_bams2/Vernot/"
-        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        #    evolbio.ut.ee/PNG_bams2/SGDP/"
+        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+           evolbio.ut.ee/PNG_bams2/SGDP/"
         # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
         #    evolbio.ut.ee/PNG_bams2/Sanger/"
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/IGDP/"
+        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
+        #    evolbio.ut.ee/PNG_bams2/IGDP/"
 
     # directory to hold all result
     data_root: "/projects/AKEY/akey_vol2/serenatu/data"
