@@ -1,60 +1,100 @@
-print(f'in genotype, {len(ids)} ids')
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    subw_outputs_dict['GATK-genotype'].extend(
-         expand(paths['haplotype_raw'],
-                chromosome=chromosomes,
-                id=ids.keys()))
-    # subw_outputs_dict['GATK-genotype'].extend(
-    #     expand(paths['indel_vcf'],
-    #            chromosome=chromosomes))
+    recal = expand(paths['snp_tranche'], chromosome=chromosomes)
+    if all([os.path.exists(f) for f in recal]):
+        subw_outputs_dict['GATK-genotype'] = expand(paths['indel_vcf'],
+            chromosome=chromosomes)
+    else:
+        subw_outputs_dict['GATK-genotype'] = recal
 
-localrules:
-    name_map
+rule chrom_split:
+    input:
+        bam=paths['recal_bam']
 
-rule index_bam:
-    input: ancient("{dir}/{id}.chr{chromosome}.bam")
-    output: "{dir}/{id}.chr{chromosome}.bam.bai"
+    output:
+        paths['recal_chroms_bam']
+
+    params:
+        chrom=lambda wc: f'{wc.chromosome}'
 
     singularity:
         paths['gatk-container']
 
-    resources:
-        mem=lambda wildcards, input: est_resource('index_bam', input, 'mem', 4000),
-        time=lambda wildcards, input: est_resource('index_bam', input, 'time', 90),
-        short_jobs=lambda wildcards, input: est_resource('index_bam', input, 'short_jobs', 0),
+    group:
+        'chrom_split_group'
 
     shell:
-        'samtools sort -m 3G {input} {input}.sort \n'
-        'mv {input}.sort.bam {input} \n'
-        'samtools index {input} {output} '
+        'samtools view -hb {input.bam} {params.chrom} > {output}'
 
-def haplotype_input(wildcards):
-    return {
-        'bam': ancient(ids[wildcards.id].format(
-            id=wildcards.id, chromosome=wildcards.chromosome)),
-        'bai': ancient((ids[wildcards.id] + '.bai').format(
-            id=wildcards.id, chromosome=wildcards.chromosome)),
-            }
+rule group_chrom_split:
+    input:
+        ancient(expand(
+            paths['recal_chroms_bam'].replace('{id}', '{{id}}'),
+            chromosome=chromosomes))
+
+    output:
+        temp(touch(paths['split_temp']))
+
+    group:
+        'chrom_split_group'
+
+    # note the input from scrubbing is read multiple times, hence the *len
+    resources:
+        time=lambda wildcards, input, attempt: est_resource(
+                'chrom_split', [paths['recal_bam'].format(id=wildcards.id)]*len(input),
+                'time', 2000, attempt),
+        mem=500,
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+                'chrom_split', [paths['recal_bam'].format(id=wildcards.id)]*len(input),
+                'short_jobs', 0, attempt),
+
+rule index_bam:
+    input:
+        bam=ancient("{dir}/{id}.chr{chromosome}.bam"),
+        split=ancient(paths['split_temp'])
+
+    output: "{dir}/{id}.chr{chromosome}.bam.bai"
+
+    singularity: "docker://biocontainers/samtools:v1.9-4-deb_cv1"
+
+    resources:
+        mem=lambda wildcards, input, attempt: est_resource(
+            'index_bam', input, 'mem', 4000, attempt),
+        time=lambda wildcards, input, attempt: est_resource(
+            'index_bam', input, 'time', 180, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+            'index_bam', input, 'short_jobs', 0, attempt),
+
+    shell:
+        'samtools sort '
+            '-m $(({resources.mem} * 8 / 10))M '
+            '-o {input.bam}.sort.bam '
+            '{input.bam}\n'
+        'mv {input.bam}.sort.bam {input.bam} \n'
+        'samtools index {input.bam} {output} '
 
 
 rule haplotype_caller:
     input:
-        unpack(haplotype_input)
+        bam=ancient(paths['recal_chroms_bam']),
+        bai=ancient(paths['recal_chroms_bai']),
 
     output:
         vcf=paths['haplotype_raw'],
         idx=paths['haplotype_idx']
 
     resources:
-        mem=lambda wildcards, input: est_resource('haplotype', input, 'mem', 8000),
-        time=lambda wildcards, input: est_resource('haplotype', input, 'time', 360),
-        short_jobs=lambda wildcards, input: est_resource('haplotype', input, 'short_jobs', 0),
+        mem=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'mem', 8000, attempt),
+        time=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'time', 900, attempt),
+        short_jobs=lambda wildcards, input, attempt: est_resource(
+                'haplotype', input, 'short_jobs', 0, attempt),
 
     singularity:
         paths['gatk-container']
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][HaplotypeCaller][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'HaplotypeCaller  '
             '--verbosity {config[gatk][verbosity]} '
             '-R {paths[ref_genome]} '
@@ -76,6 +116,8 @@ rule name_map:
     output:
         temp(paths['name_map'])
 
+    group: 'db_import'
+
     run:
         import glob
         import os
@@ -90,8 +132,11 @@ rule name_map:
                         f))
 
             # get variants in 1000 genomes
-            supp_dir = paths['1000G_dir'].replace('{chromosome}',
-                                                  wildcards.chromosome)
+            supp_dir = paths['1000G_dir'].format(
+                    chromosome=wildcards.chromosome)
+
+            if glob.glob(supp_dir + "/*.g.vcf") == []:
+                raise ValueError(f'Supplemental files not found in {supp_dir}')
 
             for f in glob.glob(supp_dir + "/*.g.vcf"):
                 sample = os.path.split(f)[1]
@@ -111,8 +156,14 @@ rule db_import:
     singularity:
         paths['gatk-container']
 
+    group: 'db_import'
+
+    resources:
+        time=3*24*60,
+        mem=16000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][GenomicsDBImport][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'GenomicsDBImport  '
             '--verbosity {config[gatk][verbosity]} '
             '-L {wildcards.chromosome} '
@@ -134,10 +185,12 @@ rule genotype_gvcf:
     singularity:
         paths['gatk-container']
 
-    group: 'genotype_gvcf'
+    resources:
+        time=6*24*60,
+        mem=8000
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][GenotypeGVCFs][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 5 / 10))M '
             'GenotypeGVCFs '
             '--verbosity {config[gatk][verbosity]} '
             '-R {paths[ref_genome]} '
@@ -158,6 +211,7 @@ rule variant_recal_snp:
     input:
         ref=paths['ref_genome'],
         vcf=paths['genotype_vcf'],
+        tbi=paths['genotype_tbi']
 
     output:
         recal=paths['snp_recal'],
@@ -170,8 +224,12 @@ rule variant_recal_snp:
     singularity:
         paths['gatk-container']
 
+    resources:
+        time=120,
+        mem=2000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][VariantRecalibrator][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'VariantRecalibrator '
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '
@@ -185,6 +243,7 @@ rule apply_vqsr_snp:
     input:
         ref=paths['ref_genome'],
         vcf=paths['genotype_vcf'],
+        tbi=paths['genotype_tbi'],
         recal=paths['snp_recal'],
         tranche=paths['snp_tranche'],
 
@@ -194,8 +253,12 @@ rule apply_vqsr_snp:
     singularity:
         paths['gatk-container']
 
+    resources:
+        time=62,
+        mem=2000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][ApplyVQSR][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'ApplyVQSR '
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '
@@ -226,8 +289,12 @@ rule variant_recal_indel:
     singularity:
         paths['gatk-container']
 
+    resources:
+        time=120,
+        mem=2000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][VariantRecalibrator][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'VariantRecalibrator '
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '
@@ -250,8 +317,12 @@ rule apply_vqsr_indel:
     singularity:
         paths['gatk-container']
 
+    resources:
+        time=62,
+        mem=2000
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][ApplyVQSR][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'ApplyVQSR '
             '--verbosity {config[gatk][verbosity]} '
             '-R {input.ref} '

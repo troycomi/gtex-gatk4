@@ -1,3 +1,6 @@
+paths['mutect_pairs'] = paths['mutect_pairs'].format(
+    name=paths['mutect_pair_name'])
+
 with open(paths['mutect_pairs'], 'r') as reader:
     reader.readline()  # header
     tumor_normal = {}
@@ -28,7 +31,7 @@ localrules:
     pon_mutect_args
 
 rule sites_only:
-    input: 
+    input:
         bam=ancient(paths['recal_bam']),
         ref=ancient(paths['ref_genome'])
 
@@ -54,9 +57,9 @@ rule sites_only:
             '--tumor $SAMPLE '
             '--output {output} '
             '--verbosity {config[gatk][verbosity]} '
-        
+
 def get_pon_samples(wildcards):
-    pon_ids = [detail.sample 
+    pon_ids = [detail.sample
                for detail in sample_details.values()
                if (detail.individual != wildcards.individual and
                     detail.center == wildcards.center)
@@ -84,7 +87,7 @@ rule pon_mutect_args:
 rule generate_pon:
     input:
         pon=paths['pon_list']
-        
+
     output:
         paths['pon']
 
@@ -124,7 +127,7 @@ rule collect_counts:
             '-ref-hist {output.ref_hist} '
             '-alt-hist {output.alt_hist} '
             '--verbosity {config[gatk][verbosity]} '
- 
+
 rule learn_model:
     input:
         table=ancient(paths['mutect_alt']),
@@ -147,11 +150,11 @@ rule learn_model:
             '-alt-hist {input.alt_hist} '
             '-O {output} '
             '--verbosity {config[gatk][verbosity]} '
- 
+
 def get_call_input(wildcards):
     detail = sample_details[wildcards.id]
     param = get_call_params(wildcards)
-    center = detail.center 
+    center = detail.center
     if center == 'merged':
         center = sample_details[merge_map[wildcards.id]].center
     result = {'pon': ancient(expand(paths['pon'],
@@ -170,7 +173,7 @@ def get_call_params(wildcards):
     '''
     test_details = sample_details[wildcards.id]
     if wildcards.id not in tumor_normal:
-        raise ValueError("No matching normal sample found for sample " + 
+        raise ValueError("No matching normal sample found for sample " +
                          wildcards.id)
 
     normal_details = sample_details[tumor_normal[wildcards.id]]

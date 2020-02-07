@@ -1,119 +1,100 @@
 ---
 path:
-    # # # GENOTYPE # # #
-    sub_genotype: "__DATA_ROOT__/variant.calling/HaplotypeCaller"
-    haplotype_raw: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
-                       {id}.raw_variants.g.vcf"
-    haplotype_idx: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
-                       {id}.raw_variants.g.vcf.idx"
-    name_map: "__SUB_GENOTYPE__/maps/chr{chromosome}.map"
-    genomics_db: "__SUB_GENOTYPE__/DB/chr{chromosome}"
-    genotype_list: "__SUB_GENOTYPE__/genotype/chr{chromosome}.list"
-    genotype_vcf: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz"
-    genotype_tbi: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz.tbi"
+  # # # GENOTYPE # # #
+  sub_genotype: "__DATA_ROOT__/genotype"
+  split_temp: "__DATA_ROOT__/bqsr/bams/{id}.temp"
+  haplotype_raw: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
+             {id}.raw_variants.g.vcf.gz"
+  haplotype_idx: "__SUB_GENOTYPE__/GVCF/chr{chromosome}/\
+             {id}.raw_variants.g.vcf.gz.tbi"
+  name_map: "__SUB_GENOTYPE__/maps/chr{chromosome}.map"
+  genomics_db: "__SUB_GENOTYPE__/DB/chr{chromosome}"
+  genotype_list: "__SUB_GENOTYPE__/genotype/chr{chromosome}.list"
+  genotype_vcf: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz"
+  genotype_tbi: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz.tbi"
 
-    # SNP
-    snp_recal: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.recal"
-    snp_tranche: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.tranches"
-    snp_vcf: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.vcf.gz"
-    snp_script: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.plots.R"
-    # INDEL
-    indel_recal: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.recal"
-    indel_tranche: "__SUB_GENOTYPE__/genotype/recal/\
-                    indel_chr{chromosome}.tranches"
-    indel_vcf: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.vcf.gz"
-    indel_script: "__SUB_GENOTYPE__/genotype/recal/\
-                   indel_chr{chromosome}.plots.R"
+  # SNP
+  snp_recal: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.recal"
+  snp_tranche: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.tranches"
+  snp_vcf: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.vcf.gz"
+  snp_script: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.plots.R"
+  # INDEL
+  indel_recal: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.recal"
+  indel_tranche: "__SUB_GENOTYPE__/genotype/recal/\
+          indel_chr{chromosome}.tranches"
+  indel_vcf: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.vcf.gz"
+  indel_script: "__SUB_GENOTYPE__/genotype/recal/\
+           indel_chr{chromosome}.plots.R"
 
 gatk:
-    HaplotypeCaller:
-        memory: "7G"
-        options: >-
-            --genotyping-mode DISCOVERY
-            --emit-ref-confidence GVCF
-            -A DepthPerAlleleBySample
-            -A StrandBiasBySample
-            -A Coverage
-            -A FisherStrand
-            -A MappingQualityRankSumTest
-            -A MappingQualityZero
-            -A QualByDepth
-            -A RMSMappingQuality
-            -A ReadPosRankSumTest
+  HaplotypeCaller:
+    options: >-
+      --emit-ref-confidence BP_RESOLUTION
 
-    GenotypeGVCFs:
-        memory: "4G"
-        options: >-
-            --use-new-qual-calculator
-            --include-non-variant-sites
+  GenomicsDBImport:
+    options: >
+      --batch-size 50
 
-    GenomicsDBImport:
-        memory: "4G"
-        options: >
-            --consolidate
-            --batch-size 50
+  GenotypeGVCFs:
+    memory: "4G"
+    options: >-
+      --use-new-qual-calculator
+      --include-non-variant-sites
 
-    MergeVcfs:
-        memory: "1G"
+  VariantRecalibratorIndel:
+    options:
+      "-tranche 100.0
+      -tranche 99.9
+      -tranche 99.5
+      -tranche 99.0
+      -tranche 98.5
+      -tranche 98.0
+      -tranche 97.5
+      -tranche 97.0
+      -mode INDEL
+      -an QD
+      -an MQ
+      -an MQRankSum
+      -an ReadPosRankSum
+      -an FS
+      -an SOR
+      -resource:mills,known=false,training=true,\
+      truth=true,prior=12.0 {mills}
+      -resource:dbsnp,known=true,training=false,\
+      truth=false,prior=2.0 {dbsnp}"
 
-    VariantRecalibratorIndel:
-        memory: "2G"
-        options:
-            "-tranche 100.0
-            -tranche 99.9
-            -tranche 99.5
-            -tranche 99.0
-            -tranche 98.5
-            -tranche 98.0
-            -tranche 97.5
-            -tranche 97.0
-            -mode INDEL
-            -an QD
-            -an MQ
-            -an MQRankSum
-            -an ReadPosRankSum
-            -an FS
-            -an SOR
-            -resource:mills,known=false,training=true,\
-            truth=true,prior=12.0 {mills}
-            -resource:dbsnp,known=true,training=false,\
-            truth=false,prior=2.0 {dbsnp}"
+  VariantRecalibrator:
+    options:
+      "-tranche 100.0
+      -tranche 99.9
+      -tranche 99.5
+      -tranche 99.0
+      -tranche 98.5
+      -tranche 98.0
+      -tranche 97.5
+      -tranche 97.0
+      -mode SNP
+      -an QD
+      -an MQ
+      -an MQRankSum
+      -an ReadPosRankSum
+      -an FS
+      -an SOR
+      -resource:hapmap,known=false,training=true,\
+      truth=true,prior=15.0 {hapmap}
+      -resource:omni,known=false,training=true,\
+      truth=true,prior=12.0 {omni}
+      -resource:1000G,known=false,training=true,\
+      truth=false,prior=10.0 {OKG}
+      -resource:dbsnp,known=true,training=false,\
+      truth=false,prior=2.0 {dbsnp}"
 
-    VariantRecalibrator:
-        memory: "2G"
-        options:
-            "-tranche 100.0
-            -tranche 99.9
-            -tranche 99.5
-            -tranche 99.0
-            -tranche 98.5
-            -tranche 98.0
-            -tranche 97.5
-            -tranche 97.0
-            -mode SNP
-            -an QD
-            -an MQ
-            -an MQRankSum
-            -an ReadPosRankSum
-            -an FS
-            -an SOR
-            -resource:hapmap,known=false,training=true,\
-            truth=true,prior=15.0 {hapmap}
-            -resource:omni,known=false,training=true,\
-            truth=true,prior=12.0 {omni}
-            -resource:1000G,known=false,training=true,\
-            truth=false,prior=10.0 {OKG}
-            -resource:dbsnp,known=true,training=false,\
-            truth=false,prior=2.0 {dbsnp}"
+  ApplyVQSR:
+    options: >
+      -mode SNP
+      --ts-filter-level 99.5
 
-    ApplyVQSR:
-        memory: "2G"
-        options: >
-            -mode SNP
-            --ts-filter-level 99.5
-
-    ApplyVQSRIndel:
-        memory: "2G"
-        options: >
-            -mode INDEL
-            --ts-filter-level 99.5
+  ApplyVQSRIndel:
+    options: >
+      -mode INDEL
+      --ts-filter-level 99.5

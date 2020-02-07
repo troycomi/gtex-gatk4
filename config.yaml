@@ -23,30 +23,15 @@ path:
                              1.28.0--r351hf484d3e_0"
     temp_dir: "/scratch"
 
-    bam_pattern: "{id}/{id}.chr{chromosome}.bam"
-
-    input_dirs:
-        # - /tigress/AKEY/akey_vol2/serenatu/data/tibet/WGS/chr/
-        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        #    evolbio.ut.ee/PNG_bams2/Ricaut/"
-        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        #    evolbio.ut.ee/PNG_bams2/Vernot/"
-        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        #    evolbio.ut.ee/PNG_bams2/SGDP/"
-        # - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-        #    evolbio.ut.ee/PNG_bams2/Sanger/"
-        - "/tigress/AKEY/akey_vol2/serenatu/data/francois/\
-           evolbio.ut.ee/PNG_bams2/IGDP/"
-
-    # directory to hold all result
+    # directory to hold all results
     data_root: "/projects/AKEY/akey_vol2/serenatu/data"
 
     # Reference with index files
-    ref_genome: "/projects/AKEY/akey_vol1/home/selinav/\
-                 References.nobackup/hs37d5.fa"
+    ref_genome: "/projects/AKEY/akey_vol2/References/Genomes/hs37d5/\
+                 hs37d5.fa"
 
-    reference_bundle: "/projects/AKEY/akey_vol1/home/selinav/\
-                       References.nobackup/GATK_reference_bundle_b37"
+    reference_bundle: "/projects/AKEY/akey_vol2/References/\
+                       GATK_references/b37_bundle"
     ref_hapmap: "__REFERENCE_BUNDLE__/hapmap_3.3.b37.vcf"
     ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.b37.vcf"
     ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.b37.vcf"
@@ -55,17 +40,40 @@ path:
     ref_mills: "__REFERENCE_BUNDLE__/Mills_and_1000G_\
                 gold_standard.indels.b37.vcf.gz"
 
-    germline_resource: "/projects/AKEY/akey_vol1/home/selinav/\
-                        References.nobackup/GATK_Mutect2_reference_bundle/\
+    germline_resource: "/projects/AKEY/akey_vol2/References/\
+                        GATK_references/Mutect2_bundle/
                         af-only-gnomad.raw.sites.b37.vcf.gz"
 
-    common_snps: "/projects/AKEY/akey_vol1/home/selinav/References.nobackup/\
-                  GATK_Mutect2_reference_bundle/small_exac_common_3_b37.vcf.gz"
+    common_snps: "/projects/AKEY/akey_vol2/References/\
+                  GATK_references/Mutect2_bundle/
+                  small_exac_common_3_b37.vcf.gz"
 
+    # tabulated data containing information for each sample
+    sample_details: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                     SampInfo/sample_details.txt"
 
-    1000G_dir: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
-                VariantCalling.nobackup/RawVariants/BP_resolution/\
-                Supp1kg/Chr{chromosome}"
+    exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                      Enrichment_targets/\
+                      union_nwgc_macrogen_allchr_XY.bed"
+    # exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                   Enrichment_targets/Macrogen/\
+    #                   primary_target_regions_allchr_XY.bed"
+    # exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                   Enrichment_targets/NWGC/\
+    #                   primary_target_regions_allchr_XY.bed
+
+    # supplemental files for haplotype calling
+    chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                      Enrichment_targets/Union_ByChrom/chr{chromosome}.bed"
+    # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                   Enrichment_targets/Macrogen/ByChrom/chr{chromosome}.bed"
+    # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                     Enrichment_targets/NWGC/MoreFiles/PrimaryTarget/\
+    #                     Unpadded/IntFormat/\
+    #                     primary_target_regions_chr{chromosome}.bed"
+
+    1000G_dir: "/projects/AKEY/akey_vol2/References/1000G_raw_variants/\
+                Chr{chromosome}"
 
 gatk:
     verbosity: "ERROR"

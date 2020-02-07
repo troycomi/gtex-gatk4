@@ -4,47 +4,35 @@ import os
 from slurm_scrub.predictor import Predictor
 
 
-predictor = Predictor('/home/tcomi/test.json')
+predictor = Predictor('slurm_out/training.json')
 
-def est_resource(job, inputs, resource, default):
+def est_resource(job, inputs, resource, default, attempt):
     try:
         result = predictor.estimate(job,
                                     sum([os.path.getsize(i) for i in inputs]),
-                                    resource, default)
+                                    resource, default, attempt)
     except:
         print(f'Error in {job} {resource} {default} for {inputs}')
         raise Exception
     return result
 
-configfile: 'config.yaml'
+configfile: 'config_wgs.yaml'
 
 paths = config['path']
 paths = clean_config_paths(paths)
 paths['base'] = os.getcwd()
 
-ids = {}
-chromosomes = list(range(1,23))
-valid_chromosomes = {str(c) for c in chromosomes}
 # sample ids to run workflow with
-for dirname in paths['input_dirs']:
-    wc = glob_wildcards(dirname + paths['bam_pattern'].split('/')[1])  # strip leading id dir
-    for chrom in set(wc.chromosome):
-        if chrom not in valid_chromosomes:
-            #raise ValueError(f'Unexpected chromosome {chrom} in {dirname}')
-            pass
-    wc_id = [w.split('/')[1] for w in wc.id]
-    for id in set(wc_id):
-        chroms = {ch for i, ch in zip(wc_id, wc.chromosome)
-                  if id == i}
-        if valid_chromosomes - chroms:
-            print(dirname)
-            print(f"sample {id} missing {len(valid_chromosomes - chroms)} chromosomes")
-            # print(f"{sorted(valid_chromosomes - chroms)}")
-        else:
-            ids[id] = dirname + paths['bam_pattern']
+if 'recal_bam' not in paths:
+    configfile: paths['base'] + '/subworkflows/GATK-bqsr.yaml'
+    paths = join_config_paths(paths, config['path'])
 
-# i = list(ids.keys())[0]
-# ids = {i: ids[i]}
+# sample ids to run workflow with
+#ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
+ids = glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
+
+chromosomes = list(range(1,23))
+
 print(f"found {len(ids)} samples to process")
 
 subworkflows = config['main']['subworkflows']
@@ -78,7 +66,7 @@ onstart:
 
 onerror:
     print("Error! Mailing log...")
-    shell("echo 'Check error log' | mail -s 'gatk-stucci error' tcomi@princeton.edu")
+    shell("tail -n 100 {log} | mail -s 'gtex-gatk error' tcomi@princeton.edu")
     print("Done")
 
 localrules:

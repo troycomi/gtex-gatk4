@@ -11,13 +11,12 @@ path:
     mutect_alt_hist: "__MUTECT_METRICS__/{id}-alt.metrics"
     mutect_prior: "__MUTECT_METRICS__/{id}-artifact-prior.tsv"
 
+    pair_base: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                SampInfo/Sample_Pairs"
+    # mutect_pair_name: "set1_esophagus"
+    # mutect_pair_name: "set2_macrogen_dups"
     mutect_pair_name: "set3_stomach"
-    mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
-                   SampInfo/Sample_Pairs/sample_pairs_set3_stomach.txt"
-    # mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
-    #                SampInfo/Sample_Pairs/sample_pairs_set1_esophagus.txt"
-    # mutect_pairs: "/projects/AKEY/akey_vol1/home/selinav/GTEx/\
-    #                SampInfo/Sample_Pairs/sample_pairs_set2_macrogen_dups.txt"
+    mutect_pairs: "__PAIR_BASE__/sample_pairs_{name}.txt"
 
     mutect_base: "__DATA_ROOT__/mutect2/__MUTECT_PAIR_NAME__"
     unfiltered_vcf: "__MUTECT_BASE__/calls/{id}.vcf.gz"
