@@ -1,22 +1,10 @@
 from scripts.clean_config import clean_config_paths, join_config_paths
 from scripts.get_samples import get_samples
 import os
-from slurm_scrub.predictor import Predictor
 
-
-predictor = Predictor('slurm_out/training.json')
-
-def est_resource(job, inputs, resource, default, attempt):
-    try:
-        result = predictor.estimate(job,
-                                    sum([os.path.getsize(i) for i in inputs]),
-                                    resource, default, attempt)
-    except:
-        print(f'Error in {job} {resource} {default} for {inputs}')
-        raise Exception
-    return result
 
 configfile: 'config_wgs.yaml'
+# configfile: 'config.yaml'
 
 paths = config['path']
 paths = clean_config_paths(paths)
@@ -32,6 +20,7 @@ if 'recal_bam' not in paths:
 ids = glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
 
 chromosomes = list(range(1,23))
+# chromosomes = [13, 14, 15]
 
 print(f"found {len(ids)} samples to process")
 

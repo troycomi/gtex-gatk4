@@ -39,13 +39,8 @@ rule group_chrom_split:
 
     # note the input from scrubbing is read multiple times, hence the *len
     resources:
-        time=lambda wildcards, input, attempt: est_resource(
-                'chrom_split', [paths['recal_bam'].format(id=wildcards.id)]*len(input),
-                'time', 2000, attempt),
+        time=2000,
         mem=500,
-        short_jobs=lambda wildcards, input, attempt: est_resource(
-                'chrom_split', [paths['recal_bam'].format(id=wildcards.id)]*len(input),
-                'short_jobs', 0, attempt),
 
 rule index_bam:
     input:
@@ -57,12 +52,8 @@ rule index_bam:
     singularity: "docker://biocontainers/samtools:v1.9-4-deb_cv1"
 
     resources:
-        mem=lambda wildcards, input, attempt: est_resource(
-            'index_bam', input, 'mem', 4000, attempt),
-        time=lambda wildcards, input, attempt: est_resource(
-            'index_bam', input, 'time', 180, attempt),
-        short_jobs=lambda wildcards, input, attempt: est_resource(
-            'index_bam', input, 'short_jobs', 0, attempt),
+        mem=4000,
+        time=180
 
     shell:
         'samtools sort '
@@ -83,12 +74,8 @@ rule haplotype_caller:
         idx=paths['haplotype_idx']
 
     resources:
-        mem=lambda wildcards, input, attempt: est_resource(
-                'haplotype', input, 'mem', 8000, attempt),
-        time=lambda wildcards, input, attempt: est_resource(
-                'haplotype', input, 'time', 900, attempt),
-        short_jobs=lambda wildcards, input, attempt: est_resource(
-                'haplotype', input, 'short_jobs', 0, attempt),
+        mem=8000,
+        time=900,
 
     singularity:
         paths['gatk-container']
@@ -200,6 +187,50 @@ rule genotype_gvcf:
             '{config[gatk][GenotypeGVCFs][options]} '
             '2>/dev/null'
 
+def get_chromosomes(wildcards):
+    return {"gvcfs": expand(paths['genotype_vcf'],
+                            chromosome=chromosomes),
+            "idxs": expand(paths['genotype_tbi'],
+                            chromosome=chromosomes)}
+
+rule vcf_list_chroms:
+    input:
+        unpack(get_chromosomes),
+
+    output:
+        vcfList=temp(paths['chromosome_list'])
+
+    group: 'merge_genotype_gvcf'
+
+    run:
+        with open(output[0], 'w') as writer:
+            for f in input.gvcfs:
+                writer.write(f + "\n")
+
+rule merge_chromosome_gvcf:
+    input:
+        unpack(get_chromosomes),
+        vcfList=paths['chromosome_list']
+
+    output:
+        vcf=paths['vqsr_merged_vcf'],
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'merge_genotype_gvcf'
+
+    resources:
+        time=60*23,
+        mem=2000
+
+    shell:
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
+            'MergeVcfs '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--INPUT {input.vcfList} '
+            '--OUTPUT {output.vcf} '
+
 def get_snp_options(wildcards):
     return config['gatk']['VariantRecalibrator']['options'].format(
             hapmap=paths['ref_hapmap'],
@@ -210,8 +241,7 @@ def get_snp_options(wildcards):
 rule variant_recal_snp:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['genotype_vcf'],
-        tbi=paths['genotype_tbi']
+        vcf=paths['vqsr_merged_vcf'],
 
     output:
         recal=paths['snp_recal'],
@@ -225,7 +255,7 @@ rule variant_recal_snp:
         paths['gatk-container']
 
     resources:
-        time=120,
+        time=60*6,
         mem=2000
 
     shell:
@@ -242,8 +272,7 @@ rule variant_recal_snp:
 rule apply_vqsr_snp:
     input:
         ref=paths['ref_genome'],
-        vcf=paths['genotype_vcf'],
-        tbi=paths['genotype_tbi'],
+        vcf=paths['vqsr_merged_vcf'],
         recal=paths['snp_recal'],
         tranche=paths['snp_tranche'],
 
@@ -254,7 +283,7 @@ rule apply_vqsr_snp:
         paths['gatk-container']
 
     resources:
-        time=62,
+        time=240,
         mem=2000
 
     shell:
@@ -290,7 +319,7 @@ rule variant_recal_indel:
         paths['gatk-container']
 
     resources:
-        time=120,
+        time=60*6,
         mem=2000
 
     shell:
@@ -318,7 +347,7 @@ rule apply_vqsr_indel:
         paths['gatk-container']
 
     resources:
-        time=62,
+        time=240,
         mem=2000
 
     shell:

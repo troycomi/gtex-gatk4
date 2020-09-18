@@ -13,18 +13,19 @@ path:
   genotype_vcf: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz"
   genotype_tbi: "__SUB_GENOTYPE__/genotype/chr{chromosome}.vcf.gz.tbi"
 
+  chromosome_list: "__SUB_GENOTYPE__/genotype/recal/merged.list"
+  vqsr_merged_vcf: "__SUB_GENOTYPE__/genotype/recal/merged.vcf.gz"
+
   # SNP
-  snp_recal: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.recal"
-  snp_tranche: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.tranches"
-  snp_vcf: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.vcf.gz"
-  snp_script: "__SUB_GENOTYPE__/genotype/recal/snp_chr{chromosome}.plots.R"
+  snp_recal: "__SUB_GENOTYPE__/genotype/recal/snp.recal"
+  snp_tranche: "__SUB_GENOTYPE__/genotype/recal/snp.tranches"
+  snp_vcf: "__SUB_GENOTYPE__/genotype/recal/snp.vcf.gz"
+  snp_script: "__SUB_GENOTYPE__/genotype/recal/snp.plots.R"
   # INDEL
-  indel_recal: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.recal"
-  indel_tranche: "__SUB_GENOTYPE__/genotype/recal/\
-          indel_chr{chromosome}.tranches"
-  indel_vcf: "__SUB_GENOTYPE__/genotype/recal/indel_chr{chromosome}.vcf.gz"
-  indel_script: "__SUB_GENOTYPE__/genotype/recal/\
-           indel_chr{chromosome}.plots.R"
+  indel_recal: "__SUB_GENOTYPE__/genotype/recal/indel.recal"
+  indel_tranche: "__SUB_GENOTYPE__/genotype/recal/indel.tranches"
+  indel_vcf: "__SUB_GENOTYPE__/genotype/recal/indel.vcf.gz"
+  indel_script: "__SUB_GENOTYPE__/genotype/recal/indel.plots.R"
 
 gatk:
   HaplotypeCaller:
@@ -36,7 +37,6 @@ gatk:
       --batch-size 50
 
   GenotypeGVCFs:
-    memory: "4G"
     options: >-
       --use-new-qual-calculator
       --include-non-variant-sites

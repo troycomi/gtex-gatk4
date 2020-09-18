@@ -63,13 +63,10 @@ sites_only:
   time: '1-0'
 
 create_pon:
-  memory: '9G'
-  time: '1-0'
+  jobname: 'create_pon'
 
 call_variants:
   jobname: 'call_variants'
-  memory: '4G'
-  time: '0-10'
 
 # This is for all files
 db_import:

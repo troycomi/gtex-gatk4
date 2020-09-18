@@ -2,7 +2,7 @@
 main:
     subworkflows:
         # - 'SGDP-download'
-        - 'IGDP-download'
+        # - 'IGDP-download'
         # - "GATK-map"
         # - "GATK-bqsr"
         # - "GATK-callable"
