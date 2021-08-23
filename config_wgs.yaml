@@ -5,8 +5,9 @@ main:
         # - "GATK-bqsr"
         # - "alignstats"
         # - "GATK-map-metrics"
-        - "GATK-genotype"
+        # - "GATK-genotype"
         # - "GATK-mutect2"
+        - "generate_mapability_mask"
         # - "shearwater"
         # - "igv_batch"
 

@@ -24,7 +24,7 @@ path:
     temp_dir: "/scratch"
 
     # directory to hold all results
-    data_root: "/projects/AKEY/akey_vol2/serenatu/data"
+    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/Results.nobackup"
 
     # Reference with index files
     ref_genome: "/projects/AKEY/akey_vol2/References/Genomes/hs37d5/\
@@ -74,6 +74,13 @@ path:
 
     1000G_dir: "/projects/AKEY/akey_vol2/References/1000G_raw_variants/\
                 Chr{chromosome}"
+
+    recal_bam: "__DATA_ROOT__/bqsr/bams/{id}.bqsr.bam"
+    recal_bai: "__DATA_ROOT__/bqsr/bams/{id}.bqsr.bam.bai"
+    recal_chroms_bam: "__DATA_ROOT__/bqsr/bams/{id}/\
+                       {id}.chr{chromosome}.bqsr.bam"
+    recal_chroms_bai: "__DATA_ROOT__/bqsr/bams/{id}/\
+                       {id}.chr{chromosome}.bqsr.bam.bai"
 
 gatk:
     verbosity: "ERROR"

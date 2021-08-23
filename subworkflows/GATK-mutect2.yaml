@@ -15,8 +15,8 @@ path:
                 SampInfo/Sample_Pairs_WGS"
 
     # mutect_pair_name: "set1_esophagus"
-    # mutect_pair_name: "set2_colon"
-    mutect_pair_name: "set3_devstg"
+    mutect_pair_name: "set2_colon"
+    # mutect_pair_name: "set3_devstg"
     mutect_pairs: "__PAIR_BASE__/sample_pairs_{name}_WGS.txt"
 
     mutect_base: "__DATA_ROOT__/mutect2/__MUTECT_PAIR_NAME__"

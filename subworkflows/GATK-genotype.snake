@@ -1,10 +1,11 @@
 if "subw_outputs_dict" in locals() and "ids" in locals():
-    recal = expand(paths['snp_tranche'], chromosome=chromosomes)
+    recal = [paths['snp_tranche']]
     if all([os.path.exists(f) for f in recal]):
-        subw_outputs_dict['GATK-genotype'] = expand(paths['indel_vcf'],
-            chromosome=chromosomes)
+        subw_outputs_dict['GATK-genotype'] = [paths['indel_vcf']]
     else:
         subw_outputs_dict['GATK-genotype'] = recal
+
+    subw_outputs_dict['GATK-genotype'] = [paths['indel_vcf']]
 
 rule chrom_split:
     input:
@@ -37,7 +38,6 @@ rule group_chrom_split:
     group:
         'chrom_split_group'
 
-    # note the input from scrubbing is read multiple times, hence the *len
     resources:
         time=2000,
         mem=500,
@@ -118,6 +118,7 @@ rule name_map:
                         sample,
                         f))
 
+            return  # TODO remove for 1kg supplemental files
             # get variants in 1000 genomes
             supp_dir = paths['1000G_dir'].format(
                     chromosome=wildcards.chromosome)
@@ -146,7 +147,7 @@ rule db_import:
     group: 'db_import'
 
     resources:
-        time=3*24*60,
+        time=2*24*60,
         mem=16000
 
     shell:
@@ -173,7 +174,7 @@ rule genotype_gvcf:
         paths['gatk-container']
 
     resources:
-        time=6*24*60,
+        time=20*60,
         mem=8000
 
     shell:
@@ -221,7 +222,7 @@ rule merge_chromosome_gvcf:
     group: 'merge_genotype_gvcf'
 
     resources:
-        time=60*23,
+        time=60,
         mem=2000
 
     shell:
@@ -255,8 +256,8 @@ rule variant_recal_snp:
         paths['gatk-container']
 
     resources:
-        time=60*6,
-        mem=2000
+        time=60,
+        mem=8000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
@@ -283,8 +284,8 @@ rule apply_vqsr_snp:
         paths['gatk-container']
 
     resources:
-        time=240,
-        mem=2000
+        time=60,
+        mem=4000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
@@ -319,8 +320,8 @@ rule variant_recal_indel:
         paths['gatk-container']
 
     resources:
-        time=60*6,
-        mem=2000
+        time=60,
+        mem=8000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
@@ -347,8 +348,8 @@ rule apply_vqsr_indel:
         paths['gatk-container']
 
     resources:
-        time=240,
-        mem=2000
+        time=60,
+        mem=4000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '

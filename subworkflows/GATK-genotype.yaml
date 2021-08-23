@@ -39,33 +39,11 @@ gatk:
   GenotypeGVCFs:
     options: >-
       --use-new-qual-calculator
-      --include-non-variant-sites
-
-  VariantRecalibratorIndel:
-    options:
-      "-tranche 100.0
-      -tranche 99.9
-      -tranche 99.5
-      -tranche 99.0
-      -tranche 98.5
-      -tranche 98.0
-      -tranche 97.5
-      -tranche 97.0
-      -mode INDEL
-      -an QD
-      -an MQ
-      -an MQRankSum
-      -an ReadPosRankSum
-      -an FS
-      -an SOR
-      -resource:mills,known=false,training=true,\
-      truth=true,prior=12.0 {mills}
-      -resource:dbsnp,known=true,training=false,\
-      truth=false,prior=2.0 {dbsnp}"
 
   VariantRecalibrator:
     options:
-      "-tranche 100.0
+      "-mode SNP
+      -tranche 100.0
       -tranche 99.9
       -tranche 99.5
       -tranche 99.0
@@ -73,13 +51,13 @@ gatk:
       -tranche 98.0
       -tranche 97.5
       -tranche 97.0
-      -mode SNP
       -an QD
       -an MQ
       -an MQRankSum
       -an ReadPosRankSum
       -an FS
       -an SOR
+      -an DP
       -resource:hapmap,known=false,training=true,\
       truth=true,prior=15.0 {hapmap}
       -resource:omni,known=false,training=true,\
@@ -93,6 +71,28 @@ gatk:
     options: >
       -mode SNP
       --ts-filter-level 99.5
+
+  VariantRecalibratorIndel:
+    options:
+      "-mode INDEL
+      -tranche 100.0
+      -tranche 99.9
+      -tranche 99.5
+      -tranche 99.0
+      -tranche 98.5
+      -tranche 98.0
+      -tranche 97.5
+      -tranche 97.0
+      -an QD
+      -an MQRankSum
+      -an ReadPosRankSum
+      -an FS
+      -an SOR
+      -an DP
+      -resource:mills,known=false,training=true,\
+      truth=true,prior=12.0 {mills}
+      -resource:dbsnp,known=true,training=false,\
+      truth=false,prior=2.0 {dbsnp}"
 
   ApplyVQSRIndel:
     options: >

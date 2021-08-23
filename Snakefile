@@ -19,6 +19,9 @@ if 'recal_bam' not in paths:
 #ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
 ids = glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
 
+# remove contaminated samples
+ids = [i for i in ids if i not in ('P6-B6', 'P6-A4')]
+
 chromosomes = list(range(1,23))
 # chromosomes = [13, 14, 15]
 
@@ -35,6 +38,7 @@ for subw in subworkflows:
     sub_path = 'subworkflows/{}.snake'.format(subw)
     sub_config = 'subworkflows/{}.yaml'.format(subw)
     if not os.path.exists(sub_path):
+        print(f'skipping {subw}, files not found')
         continue
 
     subw_outputs_dict[subw] = []
