@@ -1,0 +1,24 @@
+---
+path:
+  reference_genome: "/projects/AKEY/akey_vol2/References/Genomes/\
+                     hs37d5/hs37d5.fa"
+  chrom_sizes: "/projects/AKEY/akey_vol2/References/Genomes/hs37d5/\
+                hs37d5.chrom_sizes.txt"
+  # for generating mapability mask
+  # source files
+  seqbility_root: "seqbility"
+  seqbility_temp: "/scratch/gpfs/tcomi/seqbility"
+  # must end in {part}
+  split_fa: "__SEQBILITY_TEMP__/{length}/split_{part}"
+  mapped_sai: "__SEQBILITY_TEMP__/mapped_{length}/{part}.sai"
+  mapped_sam: "__SEQBILITY_TEMP__/mapped_{length}/{part}.sam.gz"
+  raw_map_mask: "__SEQBILITY_TEMP__/rawMask/{length}.fa"
+  map_mask: "__SEQBILITY_TEMP__/mask/{length}_{percent}.fa"
+  map_bed: "__DATA_ROOT__/mapability_{length}_{percent}.bed"
+
+urls:
+  seqbility: "http://lh3lh3.users.sourceforge.net/download/\
+              seqbility-20091110.tar.bz2"
+containers:
+  bwa: "docker://biocontainers/bwa:v0.7.17_cv1"
+  samtools: "docker://biocontainers/samtools:v1.7.0_cv4"

@@ -1,0 +1,185 @@
+import gzip
+
+if "subw_outputs_dict" in locals() and "ids" in locals():
+    subw_outputs_dict['generate_mapability_mask'] = expand(paths['map_bed'],
+            length=[151, 75],
+            percent=50)
+
+wildcard_constraints:
+    length='\d+'
+
+rule build_seqbility:
+    output: directory(paths['seqbility_root'])
+    shell:
+        'wget --quiet -O {output}.tar.bz2 {config[urls][seqbility]} \n'
+        'bzip2 -d {output}.tar.bz2 \n'
+        'tar -xf {output}.tar \n'
+        'rm {output}.tar \n'
+        'mv {output}-20091110 {output} \n'
+        'cd {output} \n'
+        'make \n'
+
+rule samtools_index:
+    input: ancient(paths['reference_genome'])
+    output: paths['reference_genome'] + '.fai'
+    singularity:
+        config['containers']['samtools']
+    shell:
+        'samtools faidx {input}'
+
+rule chrom_sizes:
+    # keep only digits, make bed file
+    input: paths['reference_genome'] + '.fai'
+    output: paths['chrom_sizes']
+    shell:
+        'sed -n -e '
+             "'s/^\([1-9][0-9]\?\\t\)\([0-9]\+\).*/\\10\\t\\2/p' "
+             '{input} '
+        '| sort -n -k1 '
+        '> {output}'
+
+assert paths['split_fa'].endswith('{part}'), "split_fa output must end in '{path}'"
+checkpoint split_fa:
+    input:
+        seqbility=rules.build_seqbility.output,
+        reference=paths['reference_genome']
+    output:
+        directory(Path(paths['split_fa']).parents[0])
+    params:
+        suffix=paths['split_fa'].replace('{part}', '')
+    priority: 1
+    shell:
+        'mkdir -p {output} \n'
+        '{input.seqbility}/splitfa '
+            '{input.reference} {wildcards.length} '
+            '| split '
+                '--lines 20000000 '
+                '--filter=\'gzip > $FILE\' '
+                '- '  # read from stdin
+                '{params.suffix} '  # suffix
+
+bwa_outputs = multiext(paths['reference_genome'],
+                       '.bwt', '.pac', '.ann', '.amb', '.sa')
+
+rule bwa_index:
+    input: ancient(paths['reference_genome'])
+    output: bwa_outputs
+    singularity:
+        config['containers']['bwa']
+    shell:
+        'bwa index '
+            '-a bwtsw '
+            '{input} '
+            '2> /dev/null '
+
+rule bwa_aln:
+    input:
+        fa=paths['split_fa'],
+        reference=paths['reference_genome'],
+        ind=rules.bwa_index.output
+    output:
+        temp(paths['mapped_sai'])
+    singularity:
+        config['containers']['bwa']
+    shell:
+        'bwa aln '
+            '-R 1000000 '
+            '-O 3 '
+            '-E 3 '
+            '{input.reference} '
+            '<(zcat {input.fa}) '
+        '> {output} '
+        '2> /dev/null '
+
+rule bwa_samse:
+    input:
+        sai=paths['mapped_sai'],
+        fa=paths['split_fa'],
+        reference=paths['reference_genome']
+    output:
+        temp(paths['mapped_sam'])
+    singularity:
+        config['containers']['bwa']
+    priority: 1
+    shell:
+        'bwa samse '
+            '{input.reference} '
+            '{input.sai} '
+            '<(zcat {input.fa}) '
+        '2> /dev/null '
+        '| gzip > {output} '
+
+def gen_raw_mask_input(wildcards):
+    checkpoints.split_fa.get(**wildcards)
+    partial_fa = expand(paths['split_fa'], **wildcards, allow_missing=True)
+    assert len(partial_fa) == 1, "too many split_fa wildcards"
+    parts = glob_wildcards(partial_fa[0]).part
+    assert len(parts) == len(set(parts)), "parts contains duplicates"
+    return {
+            'sams': expand(paths['mapped_sam'], part=sorted(parts), **wildcards),
+            'seqbility': rules.build_seqbility.output,
+            }
+
+rule gen_raw_mask:
+    input:
+        unpack(gen_raw_mask_input)
+    output:
+        paths['raw_map_mask']
+    shell:
+        'gzip -dc {input.sams} '
+            '| {input.seqbility}/gen_raw_mask.pl '
+            '2> /dev/null '
+            '> {output}'
+
+rule gen_mapability_mask:
+    input:
+        seqbility=rules.build_seqbility.output,
+        raw=paths['raw_map_mask']
+    output:
+        paths['map_mask']
+    params:
+        ratio=lambda wildcards: str(int(wildcards.percent)/100)
+    shell:
+        '{input.seqbility}/gen_mask '
+            '-l {wildcards.length} '
+            '-r {params.ratio} '
+            '{input.raw} '
+        '> {output}'
+
+rule map_fa_to_bed:
+    input:
+        paths['map_mask']
+    output:
+        paths['map_bed']
+    run:
+        threshold = '3'  # only retain unique
+        chrom = ''
+        chrom_pos = 0
+        region_start = 0
+        in_region = False
+
+        with open(output[0], 'w') as outfile, \
+                open(input[0], 'r') as infile:
+            for line in infile:
+                line = line.strip()
+                if line[0] == '>':
+                    if in_region:  # emit region from last chrom
+                        outfile.write(f'{chrom}\t{region_start}\t{chrom_pos}\n')
+                    chrom = line.split()[0][1:]
+                    chrom_pos = 0
+                    region_start = 0
+                    in_region = False
+                    continue
+                
+                for i,b in enumerate(line):
+                    # start new region
+                    if not in_region and b == threshold:
+                        region_start = chrom_pos + i
+                        in_region = True
+                    elif in_region and b != threshold:
+                        outfile.write(f'{chrom}\t{region_start}\t{chrom_pos+i}\n')
+                        in_region = False
+
+                chrom_pos += len(line)
+            if in_region:  # emit region from last chrom
+                outfile.write(f'{chrom}\t{region_start}\t{chrom_pos}\n')
