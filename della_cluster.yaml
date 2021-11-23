@@ -13,12 +13,10 @@ fastq_to_ubam:
   memory: '8G'
   time: '2-0'
 
-split_ubam:
   n: 1
   memory: '400M'
   time: '2-0'
 
-mark_adapters:
   n: 1
   memory: '1G'
   time: '0-3'

@@ -7,9 +7,86 @@ if 'dedup_bam' not in paths:
     configfile: paths['base'] + '/subworkflows/GATK-map.yaml'
     paths = join_config_paths(paths, config['path'])
 
+details = get_samples(paths['sample_details'])
+
+def realigner_target_creator_input(wildcards):
+    return expand(paths['dedup_bam'],
+            id=(k for k, v in details.items()
+                if v.individual == wildcards.individual))
+
+rule realigner_target_creator:
+    input: realigner_target_creator_input
+
+    output: paths['indel_targets']
+
+    singularity:
+        paths['gatk3-container']
+
+    params:
+        inputs=lambda wildcards, input: ' '.join(
+                f'-I {infile}' for infile in input)
+
+    threads: 1
+    
+    resources:
+        mem=12000,
+        time=2*24*60,
+
+    shell:
+        'java -Xmx11500M '
+            '-jar /usr/GenomeAnalysisTK.jar '
+            '-T RealignerTargetCreator '
+            '-R {paths[ref_genome]} '
+            '-known {paths[dbsnp_indels]} '
+            '-known {paths[ref_indel]} '
+            '-known {paths[ref_mills]} '
+            '{params.inputs} '
+            '--out {output} '
+            '&> /dev/null '
+
+def indel_realigner_input(wildcards):
+    return {
+            'bam': expand(paths['dedup_bam'], **wildcards),
+            'targets': expand(paths['indel_targets'],
+                individual=details[wildcards.id].individual)
+            }
+
+rule indel_realigner:
+    input: unpack(indel_realigner_input)
+
+    output: paths['indel_realigned']
+
+    singularity:
+        paths['gatk3-container']
+
+    params:
+        inputs=lambda wildcards, input: ' '.join(
+                '-I {infile}' for infile in input)
+
+    threads: 1
+    
+    resources:
+        mem=5000,
+        time=10*60,
+
+    shell:
+        'java -Xmx3500M '
+            '-jar /usr/GenomeAnalysisTK.jar '
+            '-T IndelRealigner '
+            '-targetIntervals {input.targets} '
+            '-R {paths[ref_genome]} '
+            '-known {paths[dbsnp_indels]} '
+            '-known {paths[ref_indel]} '
+            '-known {paths[ref_mills]} '
+            '-I {input.bam} '
+            '--out {output} '
+            '> /dev/null '
+
+
 def get_bam(wildcards):
     if wildcards.type == 'before':
-        return {'bam': paths['dedup_bam'], 'bai': paths['dedup_bai']}
+        return {'bam': paths['indel_realigned']}
+        # return {'bam': paths['indel_realigned'], 'bai': paths['dedup_bai']}
     elif wildcards.type == 'after':
         return {'bam': ancient(paths['recal_bam'])}
     else:
@@ -37,19 +114,23 @@ rule bqsr_table:
 
     group: 'bqsr'
 
+    resources:
+        mem=config['gatk']['BQSR']['memory'],
+        time=4*60,
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}M" '
             'BaseRecalibrator '
             '-R {paths[ref_genome]} '
             '--verbosity {config[gatk][verbosity]} '
+            '-L {paths[exome_intervals]} '
             '-I {input.bam} '
             '-O {output} '
             '{params} '
-            # '-L {paths[exome_intervals]} '
 
 def get_before_table(wildcards):
-    return {'bam': paths['dedup_bam'],
-            'bai': paths['dedup_bai'],
+    return {'bam': paths['indel_realigned'],
+            # 'bai': paths['dedup_bai'],
             'table': paths['recal_table'].replace('{type}', 'before')}
 
 rule bqsr_bam:
@@ -58,20 +139,24 @@ rule bqsr_bam:
 
     output:
         bam=protected(paths['recal_bam'])
+        bai=protected(paths['recal_bai'])
 
     singularity:
         paths['gatk-container']
 
+    params: default_bai=labmda wildcards: expand(paths['recal_bam'][:-1] + 'i', **wildcards)
+
     group: 'bqsr'
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}M" '
             'ApplyBQSR '
             '-R {paths[ref_genome]} '
             '--verbosity {config[gatk][verbosity]} '
             '-bqsr {input.table} '
             '-I {input.bam} '
-            '-O {output.bam}'
+            '-O {output.bam}\n'
+        'mv {params.default_bai} {output.bai}'
 
 def get_tables(wildcards):
     return {'before': ancient(paths['recal_table'].replace('{type}', 'before')),
@@ -90,7 +175,7 @@ rule analyze_bqsr:
     group: 'bqsr'
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}" '
+        'gatk --java-options "-Xmx{config[gatk][BQSR][memory]}M" '
             'AnalyzeCovariates '
             '--verbosity {config[gatk][verbosity]} '
             '-before {input.before} '

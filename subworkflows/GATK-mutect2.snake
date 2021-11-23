@@ -32,16 +32,13 @@ if config['center'] == 'merged':
 if "subw_outputs_dict" in locals() and "ids" in locals():
     output_ids = [id for id in ids if id in tumor_normal]
     subw_outputs_dict['GATK-mutect2'] = expand(paths['filter_vcf'],
-                                               id=output_ids,
-                                               chromosome=chromosomes)
+                                               id=output_ids)
 localrules:
     filter_variants,
-    pon_mutect_args,
-    generate_pon
 
 rule sites_only:
     input:
-        bam=ancient(paths['recal_chroms_bam']),
+        bam=ancient(paths['recal_bam']),
         ref=ancient(paths['ref_genome'])
 
     output:
@@ -51,7 +48,7 @@ rule sites_only:
         paths['gatk-container']
 
     resources:
-        time=30*60,
+        time=16*60,
         mem=4000
 
     shell:
@@ -67,7 +64,7 @@ rule sites_only:
             'Mutect2 '
             '--reference {input.ref} '
             '--input {input.bam} '
-            '--tumor $SAMPLE '
+            '--max-mnp-distance 0 '
             '--output {output} '
             '--verbosity {config[gatk][verbosity]} '
 
@@ -92,21 +89,36 @@ def get_pon_samples_WGS(wildcards):
     return expand(paths['sites_only'],
                   id=pon_ids, chromosome=wildcards.chromosome)
 
-rule pon_mutect_args:
+rule generate_pon_db:
     input:
-        get_pon_samples_WGS
+        get_pon_samples
 
     output:
-        temp(paths['pon_list'])
+        temp(directory(paths['pon_db']))
 
-    run:
-        with open(output[0], 'w') as outfile:
-            for f in input:
-                outfile.write(f + "\n")
+    params:
+        inputs=lambda wildcards, input: '-V ' + ' -V '.join(input)
+
+    resources:
+        time=24*60,
+        mem=8000
+
+    singularity:
+        paths['gatk-container']
+
+    shell:
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
+            'GenomicsDBImport  '
+            '--verbosity {config[gatk][verbosity]} '
+            '-L {paths[exome_intervals]} '
+            '--batch-size 50 '
+            '--merge-input-intervals '
+            '--genomicsdb-workspace-path {output} '
+            '{params.inputs} '
 
 rule generate_pon:
     input:
-        pon=paths['pon_list']
+        pon=paths['pon_db']
 
     output:
         paths['pon']
@@ -115,70 +127,16 @@ rule generate_pon:
         paths['gatk-container']
 
     resources:
-        time=120,
-        mem=1000,
+        time=6*60,
+        mem=4000,
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
             'CreateSomaticPanelOfNormals '
-            '-O {output} '
-            '-vcfs {input} '
-            '--verbosity {config[gatk][verbosity]} '
-
-rule collect_counts:
-    input:
-        ancient(paths['recal_chroms_bam'])
-
-    output:
-        table=paths['mutect_alt'],
-        ref_hist=paths['mutect_ref_hist'],
-        alt_hist=paths['mutect_alt_hist']
-
-    singularity:
-        paths['gatk-container']
-
-    group: 'call_variants'
-
-    resources:
-        time=40 * 60,
-        mem=6000
-
-    shell:
-        'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
-            'CollectF1R2Counts '
+            '--germline-resource {paths[germline_resource]} '
             '--reference {paths[ref_genome]} '
-            '--input {input} '
-            '-alt-table {output.table} '
-            '-ref-hist {output.ref_hist} '
-            '-alt-hist {output.alt_hist} '
-            '--verbosity {config[gatk][verbosity]} '
-            # '--intervals {paths[exome_intervals]} '
-
-rule learn_model:
-    input:
-        table=ancient(paths['mutect_alt']),
-        ref_hist=ancient(paths['mutect_ref_hist']),
-        alt_hist=ancient(paths['mutect_alt_hist'])
-
-    output:
-        paths['mutect_prior']
-
-    singularity:
-        paths['gatk-container']
-
-    group: 'call_variants'
-
-    resources:
-        time=40 * 60,
-        mem=6000
-
-    shell:
-        'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
-            'LearnReadOrientationModel '
-            '-alt-table {input.table} '
-            '-ref-hist {input.ref_hist} '
-            '-alt-hist {input.alt_hist} '
             '-O {output} '
+            '-V gendb://{input} '
             '--verbosity {config[gatk][verbosity]} '
 
 def get_call_input(wildcards):
@@ -189,16 +147,13 @@ def get_call_input(wildcards):
         center = sample_details[merge_map[wildcards.id]].center
     result = {'pon': ancient(expand(paths['pon'],
                 individual=detail.individual,
-                chromosome=wildcards.chromosome)),
-            'prior': ancient(expand(paths['mutect_prior'],
+                center=center)),
+            'test': ancient(expand(paths['recal_bam'],
                 id=wildcards.id,
-                chromosome=wildcards.chromosome)),
-            'test': ancient(expand(paths['recal_chroms_bam'],
-                id=wildcards.id,
-                chromosome=wildcards.chromosome)),
-            'normal': ancient(expand(paths['recal_chroms_bam'],
+                )),
+            'normal': ancient(expand(paths['recal_bam'],
                 id=param['normal'],
-                chromosome=wildcards.chromosome))}
+                ))}
 
     return result
 
@@ -224,13 +179,13 @@ def get_call_params(wildcards):
 
     return result
 
-rule call_variants:
+rule mutect2:
     input:
         unpack(get_call_input)
 
     output:
         vcf=paths['unfiltered_vcf'],
-        bam=paths['mutect_bam']
+        f1r2=paths['mutect_f1r2']
 
     params:
         names=get_call_params
@@ -241,8 +196,8 @@ rule call_variants:
     group: 'call_variants'
 
     resources:
-        time=40 * 60,
-        mem=6000
+        time=2 * 24 * 60,
+        mem=8000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
@@ -254,28 +209,52 @@ rule call_variants:
             '--normal {params.names[normal]} '
             '--pon {input.pon} '
             '--output {output.vcf} '
-            '-bamout {output.bam} '
             '--germline-resource {paths[germline_resource]} '
-            '--orientation-bias-artifact-priors {input.prior} '
             '--verbosity {config[gatk][verbosity]} '
+            '--intervals {paths[exome_intervals]} '
+            '--f1r2-tar-gz {output.f1r2} '
             '{config[gatk][Mutect2_Calls][options]} '
-            # '--intervals {paths[exome_intervals]} '
+
+rule learn_model:
+    input:
+        paths['mutect_f1r2']
+
+    output:
+        paths['mutect_read_model']
+
+    singularity:
+        paths['gatk-container']
+
+    group: 'call_variants'
+
+    resources:
+        time=2 * 24 * 60,
+        mem=8000
+
+    shell:
+        'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
+            'LearnReadOrientationModel '
+            '--input {input} '
+            '--output {output} '
+            '--verbosity {config[gatk][verbosity]} '
 
 rule filter_variants:
     input:
-        bam=paths['recal_chroms_bam'],
-        vcf=paths['unfiltered_vcf']
+        bam=paths['recal_bam'],
+        vcf=paths['unfiltered_vcf'],
+        model=paths['mutect_read_model']
 
     output:
         pileup=paths['pileup'],
         con_tab=paths['con_tab'],
+        tumor_tab=paths['tumor_segments'],
         vcf=paths['filter_vcf']
 
     singularity:
         paths['gatk-container']
 
     resources:
-        time=10,
+        time=63,
         mem=2000,
 
     shell:
@@ -291,12 +270,15 @@ rule filter_variants:
             'CalculateContamination '
             '--input {output.pileup} '
             '--output {output.con_tab} '
+            '--tumor-segmentation {output.tumor_tab} '
             '--verbosity {config[gatk][verbosity]} \n'
         'gatk --java-options -Xmx$(({resources.mem} * 9 / 10))M '
             'FilterMutectCalls '
             '--variant {input.vcf} '
-            '--contamination-table {output.con_tab} '
+            '--reference {paths[ref_genome]} '
             '--output {output.vcf} '
-            '--stats /dev/null '
+            '--contamination-table {output.con_tab} '
+            '--orientation-bias-artifact-priors {input.model} '
+            '--tumor-segmentation {output.tumor_tab} '
             '--verbosity {config[gatk][verbosity]} '
             '{config[gatk][Mutect2_Filter][filter_options]} \n'

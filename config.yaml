@@ -9,52 +9,57 @@ main:
         # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
-        - "GATK-genotype"
-        # - "GATK-mutect2"
+        # - "GATK-genotype"  # TODO
+        - "GATK-mutect2"  # TODO
         # - "shearwater"
         # - "igv_batch"
         # - "rehead_and_split_bam"
 
+# center: "nwgc"
+# center: "macrogen"
+# center: "merged"
+center: "all"
+
 path:
-    gatk-container: "docker://broadinstitute/gatk:4.1.3.0"
+    gatk-container: "docker://broadinstitute/gatk:4.1.7.0"
     gatk3-container: "docker://broadinstitute/gatk3:3.8-1"
     bioconductor-container: "docker://quay.io/\
                              biocontainers/bioconductor-deepsnv:\
                              1.28.0--r351hf484d3e_0"
+    samtools: "docker://biocontainers/samtools:v1.9-4-deb_cv1"
+
     temp_dir: "/scratch"
 
     # directory to hold all results
-    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/Results.nobackup"
+    data_root: "/projects/AKEY/akey_vol2/GTExSomaticMutations/Results_GRCh38.nobackup"
 
     # Reference with index files
-    ref_genome: "/projects/AKEY/akey_vol2/References/Genomes/hs37d5/\
-                 hs37d5.fa"
+    ref_genome: "/projects/AKEY/akey_vol2/References/Genomes/GRCh38/\
+                 GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 
     reference_bundle: "/projects/AKEY/akey_vol2/References/\
-                       GATK_references/b37_bundle"
-    ref_hapmap: "__REFERENCE_BUNDLE__/hapmap_3.3.b37.vcf"
-    ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.b37.vcf"
-    ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.b37.vcf"
-    ref_indel: "__REFERENCE_BUNDLE__/1000G_phase1.indels.b37.vcf.ga"
-    ref_dbsnp: "__REFERENCE_BUNDLE__/dbsnp_138.b37.vcf"
-    ref_mills: "__REFERENCE_BUNDLE__/Mills_and_1000G_\
-                gold_standard.indels.b37.vcf.gz"
+                       GATK_references/GRCh38"
+    ref_hapmap: "__REFERENCE_BUNDLE__/hapmap_3.3.hg38.vcf.gz"
+    ref_omni: "__REFERENCE_BUNDLE__/1000G_omni2.5.hg38.vcf.gz"
+    ref_1000g: "__REFERENCE_BUNDLE__/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
+    ref_indel: "__REFERENCE_BUNDLE__/Homo_sapiens_assembly38.known_indels.vcf.gz"
+    ref_dbsnp: "__REFERENCE_BUNDLE__/Homo_sapiens_assembly38.dbsnp138.vcf"
+    ref_mills: "__REFERENCE_BUNDLE__/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
 
     germline_resource: "/projects/AKEY/akey_vol2/References/\
-                        GATK_references/Mutect2_bundle/
-                        af-only-gnomad.raw.sites.b37.vcf.gz"
+                        GATK_references/Mutect2_bundle/\
+                        af-only-gnomad.hg38.vcf.gz"
 
     common_snps: "/projects/AKEY/akey_vol2/References/\
-                  GATK_references/Mutect2_bundle/
-                  small_exac_common_3_b37.vcf.gz"
+                  GATK_references/Mutect2_bundle/\
+                  small_exac_common_3.hg38.vcf.gz"
 
     # tabulated data containing information for each sample
     sample_details: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
                      SampInfo/sample_details.txt"
 
     exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-                      Enrichment_targets/\
-                      union_nwgc_macrogen_allchr_XY.bed"
+                      Enrichment_targets/hg38/hg38.union_nwgc_macrogen.noalt.bed"
     # exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
     #                   Enrichment_targets/Macrogen/\
     #                   primary_target_regions_allchr_XY.bed"
@@ -63,8 +68,8 @@ path:
     #                   primary_target_regions_allchr_XY.bed
 
     # supplemental files for haplotype calling
-    chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-                      Enrichment_targets/Union_ByChrom/chr{chromosome}.bed"
+    # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                   Enrichment_targets/Union_ByChrom/chr{chromosome}.bed"
     # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
     #                   Enrichment_targets/Macrogen/ByChrom/chr{chromosome}.bed"
     # chrom_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\

@@ -1,9 +1,26 @@
 import gzip
 
+
 if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['generate_mapability_mask'] = expand(paths['map_bed'],
-            length=[151, 75],
-            percent=50)
+        length=[36, 75],
+        percent=50)
+else:
+    configfile: 'generate_mapability_mask.yaml'
+    paths = config['path']
+    paths['data_root'] = '/projects/AKEY/akey_vol2/GTExSomaticMutations/Results_GRCh38.nobackup'
+    # clean config
+    for key, value in paths.items():
+        toks = value.split('/')
+        while toks[0][0:2] == '__' and toks[0][-2:] == '__':
+            new_key = toks[0][2:-2].lower()
+            toks[0] = paths[new_key]
+            toks = '/'.join(toks).split('/')
+        paths[key] = '/'.join(toks)
+
+    rule all:
+        input:
+            expand(paths['map_bed'], length=[36, 75], percent=50)
 
 wildcard_constraints:
     length='\d+'
@@ -39,6 +56,7 @@ rule chrom_sizes:
         '> {output}'
 
 assert paths['split_fa'].endswith('{part}'), "split_fa output must end in '{path}'"
+
 checkpoint split_fa:
     input:
         seqbility=rules.build_seqbility.output,

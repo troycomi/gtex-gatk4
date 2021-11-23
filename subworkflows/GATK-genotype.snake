@@ -9,13 +9,14 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
 
 rule chrom_split:
     input:
-        bam=paths['recal_bam']
+        bam=paths['recal_bam'],
+        bai=paths['recal_bai'],
 
     output:
         paths['recal_chroms_bam']
 
     params:
-        chrom=lambda wc: f'{wc.chromosome}'
+        chrom=lambda wc: f'chr{wc.chromosome}'
 
     singularity:
         paths['gatk-container']
@@ -24,7 +25,10 @@ rule chrom_split:
         'chrom_split_group'
 
     shell:
-        'samtools view -hb {input.bam} {params.chrom} > {output}'
+        'samtools view '
+            '-hb '
+            '{input.bam} '
+            '{params.chrom} > {output}'
 
 rule group_chrom_split:
     input:
@@ -39,7 +43,7 @@ rule group_chrom_split:
         'chrom_split_group'
 
     resources:
-        time=2000,
+        time=200,
         mem=500,
 
 rule index_bam:
@@ -49,11 +53,12 @@ rule index_bam:
 
     output: "{dir}/{id}.chr{chromosome}.bam.bai"
 
-    singularity: "docker://biocontainers/samtools:v1.9-4-deb_cv1"
+    singularity: paths['samtools']
 
     resources:
         mem=4000,
-        time=180
+        time=10,
+        short_jobs=1
 
     shell:
         'samtools sort '
@@ -62,7 +67,6 @@ rule index_bam:
             '{input.bam}\n'
         'mv {input.bam}.sort.bam {input.bam} \n'
         'samtools index {input.bam} {output} '
-
 
 rule haplotype_caller:
     input:
@@ -74,8 +78,8 @@ rule haplotype_caller:
         idx=paths['haplotype_idx']
 
     resources:
-        mem=8000,
-        time=900,
+        mem=4000,
+        time=500,
 
     singularity:
         paths['gatk-container']
@@ -84,6 +88,8 @@ rule haplotype_caller:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'HaplotypeCaller  '
             '--verbosity {config[gatk][verbosity]} '
+            '--intervals {paths[exome_intervals]} '
+            '--interval-padding 150 '
             '-R {paths[ref_genome]} '
             '-I {input.bam} '
             '-O {output.vcf} '
@@ -147,14 +153,14 @@ rule db_import:
     group: 'db_import'
 
     resources:
-        time=2*24*60,
+        time=36*60,
         mem=16000
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'GenomicsDBImport  '
             '--verbosity {config[gatk][verbosity]} '
-            '-L {wildcards.chromosome} '
+            '-L chr{wildcards.chromosome} '
             '--sample-name-map {input} '
             '--genomicsdb-workspace-path {output} '
             '{config[gatk][GenomicsDBImport][options]} '
@@ -168,13 +174,13 @@ rule genotype_gvcf:
         tbi=paths['genotype_tbi']
 
     params:
-        interval=lambda wildcards: f'{wildcards.chromosome}'
+        interval=lambda wildcards: f'chr{wildcards.chromosome}'
 
     singularity:
         paths['gatk-container']
 
     resources:
-        time=20*60,
+        time=16*60,
         mem=8000
 
     shell:

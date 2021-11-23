@@ -13,13 +13,18 @@ rule revert_sam:
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    resources:
+        fastq_instances=1,
+        mem=6000,
+        time=4*60,
+
+    threads: 1
 
     shell:
-        'gatk --java-options "-Xmx{config[gatk][RevertSam][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'RevertSam '
-            '--VERBOSITY {gatk[verbosity]} '
-            '--TMP_DIR={path[temp_dir]} '
+            '--VERBOSITY {config[gatk][verbosity]} '
+            '--TMP_DIR={paths[temp_dir]} '
             '-I={input} '
             '-O={output} '
     
@@ -35,7 +40,12 @@ rule fastq_to_ubam:
         paths['gatk-container']
 
     resources:
-        fastq_instances=1
+        fastq_instances=1,
+        mem=8000,
+        time=2*24*60,
+
+    threads: 2
+
 
     shell:
         'zcat {input.R1} | '
@@ -55,7 +65,7 @@ rule fastq_to_ubam:
             'TEMP_UBAM=$(dirname ${{RG1[$i]}})/$(basename ${{RG1[$i]}} | '  
                 'cut -d "_" -f 1-4).ubam  \n'
             'RG=$(basename ${{RG1[$i]}} | cut -d "_" -f 2,3,4 --output-delimiter=".")  \n'
-            'gatk --java-options "-Xmx{config[gatk][FastqToSam][memory]}" '
+            'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
                 'FastqToSam '
                 '-F1=${{RG1[$i]}} '
                 '-F2=${{RG2[$i]}} '
@@ -68,7 +78,7 @@ rule fastq_to_ubam:
             'TEMP_UBAMS+=($TEMP_UBAM)  \n'
             'UBAMS_ARG+=(-I $TEMP_UBAM)  \n'
         'done  \n'
-        'gatk --java-options "-Xmx{config[gatk][MergeSamFiles][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'MergeSamFiles '
             '{config[gatk][MergeSamFiles][options]} '
             '--VERBOSITY={config[gatk][verbosity]} '
@@ -98,6 +108,12 @@ checkpoint split_ubam:
     singularity:
         paths['gatk-container']
 
+    resources:
+        mem=200,
+        time=4*60,
+
+    threads: 1
+
     # make output dir, store header, split sam and convert back to bam
     shell:
         "mkdir {output}\n"
@@ -123,8 +139,14 @@ rule mark_adapters:
     singularity:
         paths['gatk-container']
 
+    resources:
+        mem=1000,
+        time=2*60,
+
+    threads: 1
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MarkIlluminaAdapters][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'MarkIlluminaAdapters '
             '-I={input} '
             '-O={output.bam} '
@@ -144,8 +166,14 @@ rule sam_to_fastq:
 
     group: 'map_fastq'
 
+    resources:
+        mem=8000,
+        time=8*60,
+
+    threads: 3
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][SamToFastq][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} / 2))M '
             'SamToFastq '
             '-I={input.marked} '
             '--FASTQ={output} '
@@ -183,8 +211,11 @@ rule merge_bam:
 
     group: 'map_fastq'
 
+    resources:
+        mem=8000,
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MergeBamAlignment][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} / 2))M '
             'MergeBamAlignment '
             '--ALIGNED_BAM={input.bam} '
             '--UNMAPPED_BAM={input.ubam} '
@@ -226,12 +257,18 @@ rule merge_split_bam:
 
     group: 'merge_dedup'
 
+    resources:
+        mem=8000,
+        time=4*60,
+
+    threads: 1
+
     shell:
         'BAMS_ARG=()\n'
         'for bamfile in {input}; do\n'
             'BAMS_ARG+=(-I $bamfile)\n'
         'done\n'
-        'gatk --java-options "-Xmx{config[gatk][MergeSamFilesSample][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'MergeSamFiles '
             '--VERBOSITY={config[gatk][verbosity]} '
             '--ASSUME_SORTED '
@@ -256,8 +293,12 @@ rule dedup_bam:
 
     group: 'merge_dedup'
 
+    resources:
+        mem=8000,
+        time=4*60,
+
     shell:
-        'gatk --java-options "-Xmx{config[gatk][MarkDuplicates][memory]}" '
+        'gatk --java-options -Xmx$(({resources.mem} * 8 / 10))M '
             'MarkDuplicates '
             '-I={input.bam} '
             '-O={output.bam} '

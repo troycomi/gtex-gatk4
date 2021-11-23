@@ -1,7 +1,7 @@
 ---
 path:
-  reference_genome: "/projects/AKEY/akey_vol2/References/Genomes/\
-                     hs37d5/hs37d5.fa"
+  reference_genome: "/projects/AKEY/akey_vol2/References/Genomes/GRCh38/\
+                     GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
   chrom_sizes: "/projects/AKEY/akey_vol2/References/Genomes/hs37d5/\
                 hs37d5.chrom_sizes.txt"
   # for generating mapability mask

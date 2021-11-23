@@ -3,8 +3,8 @@ from scripts.get_samples import get_samples
 import os
 
 
-configfile: 'config_wgs.yaml'
-# configfile: 'config.yaml'
+# configfile: 'config_wgs.yaml'
+configfile: 'config.yaml'
 
 paths = config['path']
 paths = clean_config_paths(paths)
@@ -15,15 +15,18 @@ if 'recal_bam' not in paths:
     configfile: paths['base'] + '/subworkflows/GATK-bqsr.yaml'
     paths = join_config_paths(paths, config['path'])
 
-# sample ids to run workflow with
-#ids = glob_wildcards(paths['fastq_R1'].replace('{id}', '{id,[^_]+}')).id
-ids = glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
+ids = []  # glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
+
+if len(ids) == 0:  # no recal bams yet
+    ids = [line.split()[1]
+            for line in open(paths['sample_details'], 'r')
+            ]
+    ids = ids[1:]  # remove header
 
 # remove contaminated samples
-ids = [i for i in ids if i not in ('P6-B6', 'P6-A4')]
+# ids = [i for i in ids if i not in ('P6-B6', 'P6-A4')]
 
 chromosomes = list(range(1,23))
-# chromosomes = [13, 14, 15]
 
 print(f"found {len(ids)} samples to process")
 

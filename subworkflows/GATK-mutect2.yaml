@@ -1,33 +1,28 @@
 ---
 path:
     # # # MUTECT2 # # #
-    sites_only: "__DATA_ROOT__/mutect2/sites-only/{id}_chr_{chromosome}.vcf.gz"
-    pon_list: "__DATA_ROOT__/mutect2/pon/\
-               {individual}_chr_{chromosome}.vcf.args"
-    pon: "__DATA_ROOT__/mutect2/pon/{individual}_chr_{chromosome}.vcf.gz"
+    sites_only: "__DATA_ROOT__/mutect2/sites-only/{id}.vcf.gz"
+    pon_db: "__DATA_ROOT__/mutect2/pon_db/{individual}.{center}"
+    pon: "__DATA_ROOT__/mutect2/pon/{individual}.{center}.vcf.gz"
     mutect_metrics: "__DATA_ROOT__/mutect2/metrics"
-    mutect_alt: "__MUTECT_METRICS__/{id}_chr_{chromosome}-alt.tsv"
-    mutect_ref_hist: "__MUTECT_METRICS__/{id}_chr_{chromosome}-ref.metrics"
-    mutect_alt_hist: "__MUTECT_METRICS__/{id}_chr_{chromosome}-alt.metrics"
-    mutect_prior: "__MUTECT_METRICS__/{id}_chr_{chromosome}-artifact-prior.tsv"
+    mutect_f1r2: "__MUTECT_METRICS__/{id}-f1r2.tar.gz"
+    mutect_read_model: "__MUTECT_METRICS__/{id}-model.tar.gz"
 
     pair_base: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-                SampInfo/Sample_Pairs_WGS"
+                SampInfo/Sample_Pairs"
 
-    # mutect_pair_name: "set1_esophagus"
-    mutect_pair_name: "set2_colon"
-    # mutect_pair_name: "set3_devstg"
-    mutect_pairs: "__PAIR_BASE__/sample_pairs_{name}_WGS.txt"
+    mutect_pair_name: "set1_esophagus"
+    # mutect_pair_name: "set3_stomach"
+    mutect_pairs: "__PAIR_BASE__/sample_pairs_{name}.txt"
 
     mutect_base: "__DATA_ROOT__/mutect2/__MUTECT_PAIR_NAME__"
-    unfiltered_vcf: "__MUTECT_BASE__/calls/{id}_chr_{chromosome}.vcf.gz"
-    mutect_bam: "__MUTECT_BASE__/calls/\
-                 {id}_chr_{chromosome}_mutect_reassembled.bam"
+    unfiltered_vcf: "__MUTECT_BASE__/calls/{id}.vcf.gz"
 
     filter_base: "__MUTECT_BASE__/filtered"
-    pileup: "__FILTER_BASE__/{id}_chr_{chromosome}_pileup.table"
-    con_tab: "__FILTER_BASE__/{id}_chr_{chromosome}_contamination.table"
-    filter_vcf: "__FILTER_BASE__/{id}_chr_{chromosome}_filtered.vcf.gz"
+    pileup: "__FILTER_BASE__/{id}_pileup.table"
+    con_tab: "__FILTER_BASE__/{id}_contamination.table"
+    tumor_segments: "__FILTER_BASE__/{id}_segments.table"
+    filter_vcf: "__FILTER_BASE__/{id}_filtered.vcf.gz"
 
 gatk:
     Mutect2_Calls:

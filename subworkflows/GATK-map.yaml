@@ -2,22 +2,23 @@
 # split the ubam into separate files before
 # running bwa and merge prior to dedup step
 # about 10 million lines per GB of ubam
-map_split_lines: 500000000
+map_split_lines: 500_000_000
 path:
     # # # MAPPING # # #
-    fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations\
-                  /Fastqs.nobackup/Fastqs_WGS_original"
-    fastq_R1: "__FASTQ_INPUT__/{id}_R1.fastq.gz"
-    fastq_R2: "__FASTQ_INPUT__/{id}_R2.fastq.gz"
+    # fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations\
+    #               /Fastqs.nobackup/Fastqs_WGS_original"
+    # fastq_R1: "__FASTQ_INPUT__/{id}_R1.fastq.gz"
+    # fastq_R2: "__FASTQ_INPUT__/{id}_R2.fastq.gz"
 
-    # fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
-    #               Fastqs.nobackup/Fastqs_original"
-    # fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
-    # fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
+    fastq_input: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+                  Fastqs.nobackup/Fastqs_original"
+    fastq_R1: "__FASTQ_INPUT__/{id}_1.fastq.gz"
+    fastq_R2: "__FASTQ_INPUT__/{id}_2.fastq.gz"
 
     # only fastq or old bam needs be valid
     # if both exist will use the fastq
-    old_bam: "__MAPPING_BASE__/{id}.ubam"
+    old_bam: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Bams.nobackup/\
+              Links/{id}.merged.sorted.markeddups.realigned.recal.bam"
 
     mapping_base: "__DATA_ROOT__/mapping"
     ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
@@ -40,7 +41,6 @@ path:
 
 gatk:
     RevertSam:
-        memory: "12G"
         options: >
             --ATTRIBUTE_TO_CLEAR=XA
             --ATTRIBUTE_TO_CLEAR=XS
@@ -50,18 +50,12 @@ gatk:
             --ATTRIBUTE_TO_CLEAR=BI
 
     FastqToSam:
-        memory: "8G"
         options: "-PL=ILLUMINA"
 
     MergeSamFiles:
-        memory: "8G"
         options: "-SO queryname"
 
-    MarkIlluminaAdapters:
-        memory: "1G"
-
     SamToFastq:
-        memory: "8G"
         options: >
             --CLIPPING_ATTRIBUTE=XT
             --CLIPPING_ACTION=2
@@ -72,7 +66,6 @@ gatk:
         options: "-M -t 2"
 
     MergeBamAlignment:
-        memory: "8G"
         options: >
             --CREATE_INDEX=true
             --ADD_MATE_CIGAR=true
@@ -82,10 +75,6 @@ gatk:
             --ATTRIBUTES_TO_RETAIN=XS
 
     MergeSamFilesSample:
-        memory: "11G"
         options: >
             -SO coordinate
             --CREATE_INDEX=true
-
-    MarkDuplicates:
-        memory: "11G"

@@ -2,13 +2,16 @@
 path:
     # # # BQSR # # #
     bqsr_base: "__DATA_ROOT__/bqsr"
+    dbsnp_indels: "__REFERENCE_BUNDLE__/dbsnp/Homo_sapiens_assembly38.dbsnp138.indels.vcf.gz"
+    indel_targets: "__BQSR_BASE__/indel_targets/{individual}.realigner.intervals"
+    indel_realigned: "__BQSR_BASE__/indel_realigned/{id}.realigned.bam"
     recal_table: "__BQSR_BASE__/tables/{id}.{type}_bqsr.table"
     recal_covariates: "__BQSR_BASE__/pdfs/{id}.bqsr.pdf"
     # recal_bam defined in main config.yaml
 
 gatk:
     BQSR:
-        memory: "6G"
+        memory: 4000
         known_sites:
             "--known-sites {dbsnp}
             --known-sites {mills}
