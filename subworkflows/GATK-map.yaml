@@ -20,7 +20,8 @@ path:
     old_bam: "/tigress/AKEY/akey_vol2/GTExSomaticMutations/Bams.nobackup/\
               Links/{id}.merged.sorted.markeddups.realigned.recal.bam"
 
-    mapping_base: "__DATA_ROOT__/mapping"
+    mapping_base: "__DATA_ROOT__/mapping_bowtie2"
+    bowtie2_index: "__MAPPING_BASE__/bt2_idx/hg38"
     ubam: "__MAPPING_BASE__/ubams/{id}.ubam"
     split_ubam_dir: "__MAPPING_BASE__/ubams/{id}"
     split_ubam: "__SPLIT_UBAM_DIR__/part_{part}.ubam"
@@ -64,6 +65,13 @@ gatk:
 
     Bwa_Mem:
         options: "-M -t 2"
+
+    Bowtie2:
+        options: >-
+            --very-sensitive-local
+            --no-mixed
+            --no-discordant
+            --fr
 
     MergeBamAlignment:
         options: >

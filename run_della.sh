@@ -3,7 +3,7 @@
 #set -euo pipefail
 #srun --time 0-3 --mem 6G bwa index -a bwtsw /tigress/AKEY/akey_vol1/home/selinav/References.nobackup/hs37d5.fa
 
-module load anaconda3
+module load anaconda3/2019.3
 conda activate gtex-gatk4
 PATH=$PATH:/usr/licensed/anaconda3/2019.3/bin
 
@@ -17,12 +17,13 @@ snakemake \
                 --output=slurm_out/%x_%A --job-name={rule} \
                 --parsable -A eeb" \
     --cluster-status "/home/tcomi/scripts/slurm-status.py" \
-    --local-cores 2 \
+    --local-cores 5 \
     --use-conda \
     --use-singularity -w 120 -j 250 \
     --resources fastq_instances=10 short_jobs=10 aspera_downloads=5 aria_downloads=10 \
     --max-jobs-per-second 1 \
     --rerun-incomplete \
+    -p \
     $@
     # --keep-going \
     # --restart-times 1

@@ -7,7 +7,8 @@ if 'dedup_bam' not in paths:
     configfile: paths['base'] + '/subworkflows/GATK-map.yaml'
     paths = join_config_paths(paths, config['path'])
 
-details = get_samples(paths['sample_details'])
+details = get_samples('/projects/AKEY/akey_vol2/huixinx/Projects/01.eGTEx/06.eval_after_general/25.trim_read_ends/17.mapper_bowtie2/n20_n16rep2seqc_top5RawP10M10.sample_details.for_wes_bb.txt')
+# details = get_samples(paths['sample_details'])
 
 def realigner_target_creator_input(wildcards):
     return expand(paths['dedup_bam'],
@@ -138,13 +139,14 @@ rule bqsr_bam:
         unpack(get_before_table)
 
     output:
-        bam=protected(paths['recal_bam'])
+        bam=protected(paths['recal_bam']),
         bai=protected(paths['recal_bai'])
 
     singularity:
         paths['gatk-container']
 
-    params: default_bai=labmda wildcards: expand(paths['recal_bam'][:-1] + 'i', **wildcards)
+    params: 
+        default_bai=lambda wildcards: expand(paths['recal_bam'][:-1] + 'i', **wildcards),
 
     group: 'bqsr'
 

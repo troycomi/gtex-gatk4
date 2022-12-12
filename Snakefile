@@ -19,7 +19,7 @@ ids = []  # glob_wildcards(paths['recal_bam'].format(id='{id, [^/]+}')).id
 
 if len(ids) == 0:  # no recal bams yet
     ids = [line.split()[1]
-            for line in open(paths['sample_details'], 'r')
+            for line in open('/projects/AKEY/akey_vol2/huixinx/Projects/01.eGTEx/06.eval_after_general/25.trim_read_ends/17.mapper_bowtie2/n20_n16rep2seqc_top5RawP10M10.sample_details.for_wes_bb.txt')
             ]
     ids = ids[1:]  # remove header
 

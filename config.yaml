@@ -3,14 +3,14 @@ main:
     subworkflows:
         # - 'SGDP-download'
         # - 'IGDP-download'
-        # - "GATK-map"
-        # - "GATK-bqsr"
+        - "GATK-map"
+        - "GATK-bqsr"
         # - "GATK-callable"
         # - "GATK-merge"
         # - "alignstats"
         # - "GATK-map-metrics"
         # - "GATK-genotype"  # TODO
-        - "GATK-mutect2"  # TODO
+        # - "GATK-mutect2"  # TODO
         # - "shearwater"
         # - "igv_batch"
         # - "rehead_and_split_bam"
@@ -27,6 +27,8 @@ path:
                              biocontainers/bioconductor-deepsnv:\
                              1.28.0--r351hf484d3e_0"
     samtools: "docker://biocontainers/samtools:v1.9-4-deb_cv1"
+    bwa: "docker://biocontainers/bwa:v0.7.17_cv1"
+    bowtie2: "docker://biocontainers/bowtie2:v2.4.1_cv1"
 
     temp_dir: "/scratch"
 
@@ -57,6 +59,8 @@ path:
     # tabulated data containing information for each sample
     sample_details: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
                      SampInfo/sample_details.txt"
+    # sample_details: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
+    #                  SampInfo/sample_details_n639.txt"
 
     exome_intervals: "/projects/AKEY/akey_vol2/GTExSomaticMutations/\
                       Enrichment_targets/hg38/hg38.union_nwgc_macrogen.noalt.bed"

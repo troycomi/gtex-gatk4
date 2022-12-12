@@ -2,6 +2,8 @@ if "subw_outputs_dict" in locals() and "ids" in locals():
     subw_outputs_dict['GATK-map'] = expand(paths['dedup_bam'], id=ids)
 
 ruleorder: fastq_to_ubam > revert_sam
+localrules:
+    bowtie2_index
 
 rule revert_sam:
     input:
@@ -16,7 +18,7 @@ rule revert_sam:
     resources:
         fastq_instances=1,
         mem=6000,
-        time=4*60,
+        time=8*60,
 
     threads: 1
 
@@ -164,11 +166,11 @@ rule sam_to_fastq:
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    group: 'map_fastq_bowtie'
 
     resources:
         mem=8000,
-        time=8*60,
+        time=12*60,
 
     threads: 3
 
@@ -186,9 +188,12 @@ rule map_bam:
         marked=paths['marked_fastq']
 
     output:
-        pipe(paths['temp_mapped_bam'])
+        pipe(paths['temp_mapped_bam'] + '.unused')
 
     group: 'map_fastq'
+
+    singularity:
+        paths['bwa']
 
     shell:
         'bwa mem '
@@ -196,6 +201,46 @@ rule map_bam:
             '-p {paths[ref_genome]} '
             '{input.marked} > {output} '
             '2>/dev/null'
+
+rule bowtie2_index:
+    input:
+        paths['ref_genome']
+
+    output:
+        [paths['bowtie2_index'] + ext
+                for ext in ('.1.bt2', '.2.bt2', '.3.bt2', '.4.bt2', '.rev.1.bt2', '.rev.2.bt2')
+                ]
+
+    singularity:
+        paths['bowtie2']
+
+    shell:
+        'bowtie2-build '
+            '{input} '
+            '{paths[bowtie2_index]} '
+
+
+rule map_bam_bowtie2:
+    input:
+        marked=paths['marked_fastq'],
+        index=paths['bowtie2_index'] + '.1.bt2',
+
+    output:
+        temp(paths['temp_mapped_bam'])
+
+    singularity:
+        paths['bowtie2']
+
+    group: 'map_fastq_bowtie'
+
+    shell:
+        'bowtie2 '
+            '{config[gatk][Bowtie2][options]} '
+            '--threads 2 '
+            '-k 1 '
+            '-x {paths[bowtie2_index]} '
+            '--interleaved {input.marked} '
+            '> {output} '
 
 rule merge_bam:
     input:
@@ -209,10 +254,15 @@ rule merge_bam:
     singularity:
         paths['gatk-container']
 
-    group: 'map_fastq'
+    # group: 'map_fastq_bowtie'
 
+    # resources:
+    #     mem=8000,
     resources:
         mem=8000,
+        time=4*60,
+
+    threads: 1
 
     shell:
         'gatk --java-options -Xmx$(({resources.mem} / 2))M '
